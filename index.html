@@ -466,6 +466,29 @@
     line-height:1.4;
   }
 
+  .msg-name-input, .msg-textarea{
+    width:100%; box-sizing:border-box;
+    border:2px solid; border-color:var(--black) var(--white) var(--white) var(--black);
+    background:var(--white);
+    box-shadow:inset 1px 1px 0 rgba(0,0,0,.25);
+    font-family:'VT323', monospace; font-size:19px;
+    color:var(--ink); padding:7px 8px;
+    margin-top:10px;
+  }
+  .msg-name-input::placeholder, .msg-textarea::placeholder{ color:var(--ink-soft); }
+  .msg-textarea{ resize:vertical; min-height:64px; }
+  .msg-post-btn{ margin-top:10px; width:100%; text-align:center; }
+  .msg-list{ margin-top:16px; max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; }
+  .msg-item{
+    background:var(--white);
+    border:2px solid; border-color:var(--black) var(--white) var(--white) var(--black);
+    box-shadow:inset 1px 1px 0 rgba(0,0,0,.15);
+    padding:8px 10px; font-size:18px; color:var(--ink); line-height:1.35;
+  }
+  .msg-item .msg-who{ color:var(--titlebar-dark); }
+  .msg-empty{ color:var(--ink-soft); font-size:17px; text-align:center; padding:8px 0; }
+  .msg-hint{ margin-top:10px; font-size:14px; color:var(--ink-soft); text-align:center; }
+
   .legend{ text-align:center; font-size:17px; color:var(--titlebar-dark); }
   .legend b{ color:var(--heart); }
 
@@ -526,7 +549,7 @@
     <div class="below-titlebar">
       <nav class="menubar dither">
         <button id="menuFileBtn" aria-haspopup="true" aria-expanded="false">File</button>
-        <button id="menuEditBtn" aria-haspopup="true" aria-expanded="false">Edit</button>
+        <button id="menuMessageBtn" aria-haspopup="true" aria-expanded="false">Message</button>
         <button id="menuViewBtn" aria-haspopup="true" aria-expanded="false">View</button>
         <button id="menuHelpBtn" aria-haspopup="true" aria-expanded="false">Help</button>
 
@@ -534,8 +557,8 @@
           <button id="actNewFriend">✧ add a friend (edit source)</button>
           <button id="actRandom">✧ surprise me</button>
         </div>
-        <div class="menu-drop" id="menuEdit" hidden>
-          <button id="actClearSearch">✧ clear search</button>
+        <div class="menu-drop" id="menuMessage" hidden>
+          <button id="actMessage">✧ leave a message</button>
         </div>
         <div class="menu-drop" id="menuView" hidden>
           <button id="actToggleGrid">✧ toggle graticule lines</button>
@@ -643,6 +666,25 @@
   </div>
 </div>
 
+<div class="backdrop" id="messageBackdrop" hidden>
+  <div class="popup popup-wide" role="dialog" aria-modal="true" aria-labelledby="messageTitle">
+    <div class="titlebar dither">
+      <div class="icon" id="messageIcon"></div>
+      <div class="name">guestbook.exe</div>
+      <button class="win-btn" id="messageClose" aria-label="close">X</button>
+    </div>
+    <div class="popup-body">
+      <p class="popup-name" id="messageTitle">leave a message</p>
+      <p class="popup-byline">for whoever finds this map ✧</p>
+      <input id="msgName" class="msg-name-input" type="text" placeholder="your name" maxlength="40" autocomplete="off">
+      <textarea id="msgText" class="msg-textarea" placeholder="say something..." maxlength="500"></textarea>
+      <button id="msgPost" class="zoom-btn msg-post-btn">✧ post</button>
+      <div class="msg-list" id="msgList"></div>
+      <p class="msg-hint">messages are saved on this device only, in your browser</p>
+    </div>
+  </div>
+</div>
+
 <script src="land-data.js"></script>
 <script>
 (function(){
@@ -678,7 +720,8 @@
     heart8:   ["01100110","11111111","11111111","11111111","01111110","00111100","00011000","00000000"],
     star:     ["00011000","00011000","00111100","11111111","01111110","00111100","01100110","11000011"],
     monitor:  ["11111111","10000001","10111101","10111101","10000001","11111111","00011000","00111100"],
-    smiley:   ["01111110","10000001","10100101","10000001","10100101","10011001","10000001","01111110"]
+    smiley:   ["01111110","10000001","10100101","10000001","10100101","10011001","10000001","01111110"],
+    mail:     ["11111111","10000001","11000011","10100101","10011001","10000001","10000001","11111111"]
   };
 
   setPixelIcon(document.getElementById('titleIcon'), ICONS.monitor, getCss2('--titlebar-dark'));
@@ -703,7 +746,7 @@
     { name:"Heidi",    city:"Berlin",        country:"Germany", lat:52.52, lon:13.40, note:"a new Italian bombshell has entered the villa (berlin). dolomiti4ever" },
     { name:"Alberto",  city:"Bonn",          country:"Germany", lat:50.74, lon:7.10, note:"decided to move to Bonn, for some reason, everyone go visit him or he'll die of boredom" },
     { name:"Iason",    city:"Berlin",        country:"Germany", lat:52.52, lon:13.40, note:"im sorry guys it's really hard to keep up with everyone, hi Iason what's been up with u" },
-    { name:"David",    city:"Hamburg",       country:"Germany", lat:53.55, lon:9.99, note:"In Hamburg, I think. Honestly not sure, what's up David, whatcha up to" },
+    { name:"David",    city:"Amman",         country:"Jordan",  lat:31.95, lon:35.93, note:"an above average amount of people in this friendgroup have gone to Amman, very sick" },
     { name:"Bianca",   city:"Rome",          country:"Italy",   lat:41.90, lon:12.50 },
     { name:"Clara",    city:"Paris",         country:"France",  lat:48.85, lon:2.35, note:"The New Queen of Parmentier, long live the holy house. Getting internship offers left and right" },
     { name:"Chiara",   city:"Paris",         country:"France",  lat:48.85, lon:2.35, note:"writing thesis in Paris, newly back from Jordan, smartest girl around mashallah" },
@@ -712,7 +755,10 @@
     { name:"Domi",     city:"Leeds",         country:"UK",      lat:53.80, lon:-1.55, note:"becoming a millionaire entrepreneur in Leeds?? likely the first to go when we start eating the rich" },
     { name:"Edo",      city:"Bergamo",       country:"Italy",   lat:45.70, lon:9.67, note:"being underpaid in Bergamo, we pray for his swift return to Paris (or maybe even some fieldwork soon)" },
     { name:"Philip",   city:"Brussels",      country:"Belgium", lat:50.85, lon:4.35, note:"completing a sick EU traineeship but not decisively psyched about it" },
-    { name:"Anni",     city:"Bilbao",        country:"Spain",   lat:43.26, lon:-2.93, note:"somewhere north of spain while looking for jobs, smartest of the group, clearly" }
+    { name:"Anni",     city:"Bilbao",        country:"Spain",   lat:43.26, lon:-2.93, note:"somewhere north of spain while looking for jobs, smartest of the group, clearly" },
+    { name:"Daniel",   city:"Paris",         country:"France",  lat:48.85, lon:2.35, note:"allegedly in Paris, but in actuality living la dolce vita in Italia, also sadly #unemployed" },
+    { name:"Lis",      city:"Brussels",      country:"Belgium", lat:50.85, lon:4.35, note:"serving Bluebook in Brussels like a bad B" },
+    { name:"Noah",     city:"Maastricht",    country:"Netherlands", lat:50.85, lon:5.69, note:"doing a Law master's in Maastricht. Likes: Dutch people. Dislikes: Studying" }
   ];
   friends.forEach(function(f,i){ f.face = FACES[i % FACES.length]; f._idx = i; });
   var PLACEHOLDER_NOTE = "little info";
@@ -1184,6 +1230,7 @@
     if(e.key!=='Escape') return;
     if(!backdrop.hidden) closePopup();
     if(!missingBackdrop.hidden) closeMissing();
+    if(!messageBackdrop.hidden) closeMessages();
   });
 
   // ---------- window chrome ----------
@@ -1201,7 +1248,7 @@
   // ---------- menu bar ----------
   var menus = [
     {btn:'menuFileBtn', drop:'menuFile'},
-    {btn:'menuEditBtn', drop:'menuEdit'},
+    {btn:'menuMessageBtn', drop:'menuMessage'},
     {btn:'menuViewBtn', drop:'menuView'},
     {btn:'menuHelpBtn', drop:'menuHelp'}
   ];
@@ -1223,7 +1270,7 @@
   document.addEventListener('click', closeAllMenus);
 
   document.getElementById('actRandom').addEventListener('click', function(){ closeAllMenus(); surprise(); });
-  document.getElementById('actClearSearch').addEventListener('click', function(){ closeAllMenus(); document.getElementById('search').value=''; applySearch(); });
+  document.getElementById('actMessage').addEventListener('click', function(){ closeAllMenus(); openMessages(); });
   document.getElementById('actToggleGrid').addEventListener('click', function(){ closeAllMenus(); toggleGrid(); });
   document.getElementById('actToggleNight').addEventListener('click', function(){ closeAllMenus(); toggleNight(); });
   document.getElementById('actToggleTour').addEventListener('click', function(){ closeAllMenus(); toggleTour(); });
@@ -1238,6 +1285,53 @@
   function closeMissing(){ missingBackdrop.hidden = true; }
   document.getElementById('missingClose').addEventListener('click', closeMissing);
   missingBackdrop.addEventListener('click', function(e){ if(e.target===missingBackdrop) closeMissing(); });
+
+  // ---------- guestbook: visitors leave a message, saved locally in their own browser ----------
+  var MSG_KEY = 'friendAtlasMessages';
+  function loadMessages(){
+    try{ return JSON.parse(localStorage.getItem(MSG_KEY)) || []; }catch(e){ return []; }
+  }
+  function saveMessages(list){
+    try{ localStorage.setItem(MSG_KEY, JSON.stringify(list)); }catch(e){}
+  }
+  function renderMessages(){
+    var list = loadMessages();
+    var el = document.getElementById('msgList');
+    el.innerHTML = '';
+    if(!list.length){
+      var empty = document.createElement('p');
+      empty.className = 'msg-empty';
+      empty.textContent = 'no messages yet — be the first ✧';
+      el.appendChild(empty);
+      return;
+    }
+    list.slice().reverse().forEach(function(m){
+      var item = document.createElement('div');
+      item.className = 'msg-item';
+      var who = document.createElement('span');
+      who.className = 'msg-who';
+      who.textContent = (m.name || 'someone') + ': ';
+      item.appendChild(who);
+      item.appendChild(document.createTextNode(m.text));
+      el.appendChild(item);
+    });
+  }
+  setPixelIcon(document.getElementById('messageIcon'), ICONS.mail, getCss2('--titlebar-dark'));
+  var messageBackdrop = document.getElementById('messageBackdrop');
+  function openMessages(){ renderMessages(); messageBackdrop.hidden = false; document.getElementById('msgName').focus(); }
+  function closeMessages(){ messageBackdrop.hidden = true; }
+  document.getElementById('messageClose').addEventListener('click', closeMessages);
+  messageBackdrop.addEventListener('click', function(e){ if(e.target===messageBackdrop) closeMessages(); });
+  document.getElementById('msgPost').addEventListener('click', function(){
+    var name = document.getElementById('msgName').value.trim();
+    var text = document.getElementById('msgText').value.trim();
+    if(!text) return;
+    var list = loadMessages();
+    list.push({ name:name.slice(0,40), text:text.slice(0,500), t:Date.now() });
+    saveMessages(list);
+    document.getElementById('msgText').value = '';
+    renderMessages();
+  });
 
   // ---------- toolbar ----------
   var gridOn=false, tourOn=false;
