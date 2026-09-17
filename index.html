@@ -276,11 +276,12 @@
     background:var(--ocean);
     overflow:hidden;
     line-height:0;
-    /* allow normal page scrolling to pass through, but opt out of the
-       browser's own pinch-zoom here so a pinch on the map can drive our
-       own zoom instead of zooming the whole page */
-    touch-action:pan-x pan-y;
+    /* a touch on the map drives our own pan/zoom instead of scrolling or
+       zooming the page, so opt out of the browser's own touch gestures here */
+    touch-action:none;
+    cursor:grab;
   }
+  .map-viewport.dragging{ cursor:grabbing; }
   #mapCanvas{ display:block; width:100%; height:auto; image-rendering:pixelated; image-rendering:crisp-edges; }
   #mapOverlay{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; touch-action:manipulation; }
 
@@ -486,10 +487,9 @@
     .zoom-btn{ flex:1; }
     .search-wrap{ min-width:0; }
 
-    /* scrollbars: noticeably wider than the hairline desktop ones, easy to grab with a finger */
-    .map-shell{ grid-template-columns:1fr 28px; grid-template-rows:1fr 28px; }
-    .scrollbar-v .sb-arrow{ height:24px; }
-    .scrollbar-h .sb-arrow{ width:24px; }
+    /* no scrollbars on mobile — dragging your finger on the map pans it instead */
+    .map-shell{ grid-template-columns:1fr; grid-template-rows:1fr; }
+    .scrollbar-v, .scrollbar-h, .sb-corner{ display:none; }
 
     /* popup: a bit more breathing room, with a title bar sized to match */
     .popup{ max-width:94vw; }
@@ -734,8 +734,13 @@
   })();
 
   // ---------- real coastline data (Natural Earth 110m, via world-atlas), rasterized live ----------
-  var W = 1000, H = 500;
-  var GRID_COLS = 360, GRID_ROWS = 180;
+  // on mobile the map viewport is twice as tall relative to its width, so the
+  // warped-space canvas and grid follow the same ratio — this keeps the same
+  // pixel density (no blur/distortion), it's just working with a taller canvas.
+  var IS_MOBILE = window.matchMedia('(max-width:560px)').matches;
+  var W = 1000, H = IS_MOBILE ? 1000 : 500;
+  var ASPECT = H/W;
+  var GRID_COLS = 360, GRID_ROWS = Math.round(GRID_COLS*ASPECT);
 
   // flatten every ring (exterior + holes, across all polygons) into edges once.
   // even-odd parity across ALL rings combined correctly handles holes without
@@ -771,8 +776,10 @@
   }
 
   // ---------- projection: a fisheye-style warp that inflates Europe, plus gradual zoom ----------
-  // "warped space" is our map's real coordinate system: 0..1000 (x) by 0..500 (y),
-  // exactly matching the SVG viewBox. Real lon/lat run through a piecewise-linear
+  // "warped space" is our map's real coordinate system: 0..W (x) by 0..H (y),
+  // exactly matching the SVG viewBox (H is taller on mobile so the map takes
+  // up more of the screen, without distorting anything — see IS_MOBILE above).
+  // Real lon/lat run through a piecewise-linear
   // warp on the way in, so Europe occupies a disproportionately large share of
   // that space — the rest of the world compresses to fill what's left. Zoom/pan/
   // scrollbars all operate in this warped space; only the map rasterizer needs to
@@ -840,34 +847,34 @@
     }
     return { warp:warp, unwarp:unwarp, boxMin:leftW, boxMax:leftW+midW };
   }
-  var LON_AXIS = makeAxisWarp(LON_MIN, LON_MAX, EUROPE_LON_MIN, EUROPE_LON_MAX, EUROPE_FRAC_LON, 1000);
-  var LAT_AXIS = makeAxisWarp(LAT_MIN, LAT_MAX, EUROPE_LAT_MIN, EUROPE_LAT_MAX, EUROPE_FRAC_LAT, 500);
+  var LON_AXIS = makeAxisWarp(LON_MIN, LON_MAX, EUROPE_LON_MIN, EUROPE_LON_MAX, EUROPE_FRAC_LON, W);
+  var LAT_AXIS = makeAxisWarp(LAT_MIN, LAT_MAX, EUROPE_LAT_MIN, EUROPE_LAT_MAX, EUROPE_FRAC_LAT, H);
   function warpLon(lon){ return LON_AXIS.warp(lon); }
   function unwarpLon(w){ return LON_AXIS.unwarp(w); }
-  function warpLat(lat){ return 500-LAT_AXIS.warp(lat); } // flip: north=top=y0
-  function unwarpLat(w){ return LAT_AXIS.unwarp(500-w); }
+  function warpLat(lat){ return H-LAT_AXIS.warp(lat); } // flip: north=top=y0
+  function unwarpLat(w){ return LAT_AXIS.unwarp(H-w); }
 
-  var MIN_SPAN = 100, MAX_SPAN = 1000; // warped-lon-units visible; height follows at MAX_SPAN's aspect
+  var MIN_SPAN = 100, MAX_SPAN = 1000; // warped-lon-units visible; height follows at the current aspect
   var EUROPE_WX = (LON_AXIS.boxMin+LON_AXIS.boxMax)/2;
-  var EUROPE_WY = 500-(LAT_AXIS.boxMin+LAT_AXIS.boxMax)/2;
+  var EUROPE_WY = H-(LAT_AXIS.boxMin+LAT_AXIS.boxMax)/2;
   var EUROPE_BOX_W = LON_AXIS.boxMax-LON_AXIS.boxMin, EUROPE_BOX_H = LAT_AXIS.boxMax-LAT_AXIS.boxMin;
-  // the view is always forced to the canvas's 2:1 aspect, so pick whichever
-  // box dimension needs the larger span to fit with padding (view height = span/2)
-  var EUROPE_SPAN = Math.min(MAX_SPAN, Math.max(EUROPE_BOX_W, EUROPE_BOX_H*2) * 1.12);
+  // the view is always forced to the canvas's aspect ratio, so pick whichever
+  // box dimension needs the larger span to fit with padding (view height = span*ASPECT)
+  var EUROPE_SPAN = Math.min(MAX_SPAN, Math.max(EUROPE_BOX_W, EUROPE_BOX_H/ASPECT) * 1.12);
 
   var curSpan = MAX_SPAN;
-  var focus = { wx:500, wy:250 }; // warped-space center of the current view
-  var view = { lonMin:0, lonMax:1000, latMin:0, latMax:500 };
+  var focus = { wx:W/2, wy:H/2 }; // warped-space center of the current view
+  var view = { lonMin:0, lonMax:W, latMin:0, latMax:H };
 
   function computeView(){
-    var hx = curSpan/2, hy = (curSpan*0.5)/2;
+    var hx = curSpan/2, hy = (curSpan*ASPECT)/2;
     return { lonMin:focus.wx-hx, lonMax:focus.wx+hx, latMin:focus.wy-hy, latMax:focus.wy+hy };
   }
   function clampFocus(){
-    var hx = curSpan/2, hy = (curSpan*0.5)/2;
-    var lonLo=hx, lonHi=1000-hx, latLo=hy, latHi=500-hy;
-    focus.wx = lonLo>lonHi ? 500 : Math.min(lonHi, Math.max(lonLo, focus.wx));
-    focus.wy = latLo>latHi ? 250 : Math.min(latHi, Math.max(latLo, focus.wy));
+    var hx = curSpan/2, hy = (curSpan*ASPECT)/2;
+    var lonLo=hx, lonHi=W-hx, latLo=hy, latHi=H-hy;
+    focus.wx = lonLo>lonHi ? W/2 : Math.min(lonHi, Math.max(lonLo, focus.wx));
+    focus.wy = latLo>latHi ? H/2 : Math.min(latHi, Math.max(latLo, focus.wy));
   }
   function setFocusLL(lat, lon){ focus.wx = warpLon(lon); focus.wy = warpLat(lat); }
   function project(lat, lon){
@@ -889,6 +896,7 @@
 
   var mapCanvas = document.getElementById('mapCanvas');
   mapCanvas.width = GRID_COLS; mapCanvas.height = GRID_ROWS;
+  document.getElementById('mapOverlay').setAttribute('viewBox', '0 0 '+W+' '+H);
   var ctx = mapCanvas.getContext('2d');
   function hexToRgb(hex){
     hex = hex.replace('#','');
@@ -965,8 +973,8 @@
       return;
     }
     var vSpan = view.latMax-view.latMin, hSpan = view.lonMax-view.lonMin;
-    var vFrac = Math.min(1, vSpan/500), hFrac = Math.min(1, hSpan/1000);
-    var vScroll = 500-vSpan, hScroll = 1000-hSpan;
+    var vFrac = Math.min(1, vSpan/H), hFrac = Math.min(1, hSpan/W);
+    var vScroll = H-vSpan, hScroll = W-hSpan;
     var vPos = vScroll>0 ? view.latMin/vScroll : 0;
     var hPos = hScroll>0 ? view.lonMin/hScroll : 0;
     thumbV.style.height = (vFrac*100)+'%';
@@ -976,14 +984,14 @@
   }
 
   var grat = document.getElementById('graticule');
-  for(var gx=0; gx<=1000; gx+=100){
+  for(var gx=0; gx<=W; gx+=100){
     var l = document.createElementNS('http://www.w3.org/2000/svg','line');
-    l.setAttribute('x1',gx); l.setAttribute('y1',0); l.setAttribute('x2',gx); l.setAttribute('y2',500);
+    l.setAttribute('x1',gx); l.setAttribute('y1',0); l.setAttribute('x2',gx); l.setAttribute('y2',H);
     grat.appendChild(l);
   }
-  for(var gy=0; gy<=500; gy+=62.5){
+  for(var gy=0; gy<=H; gy+=H/8){
     var l2 = document.createElementNS('http://www.w3.org/2000/svg','line');
-    l2.setAttribute('x1',0); l2.setAttribute('y1',gy); l2.setAttribute('x2',1000); l2.setAttribute('y2',gy);
+    l2.setAttribute('x1',0); l2.setAttribute('y1',gy); l2.setAttribute('x2',W); l2.setAttribute('y2',gy);
     grat.appendChild(l2);
   }
 
@@ -1239,7 +1247,7 @@
   document.getElementById('btnNight').addEventListener('click', toggleNight);
   document.getElementById('btnTour').addEventListener('click', toggleTour);
   document.getElementById('btnSurprise').addEventListener('click', surprise);
-  document.getElementById('btnWorld').addEventListener('click', function(){ flyTo(MAX_SPAN, 500, 250); });
+  document.getElementById('btnWorld').addEventListener('click', function(){ flyTo(MAX_SPAN, W/2, H/2); });
   document.getElementById('btnEurope').addEventListener('click', function(){ flyTo(EUROPE_SPAN, EUROPE_WX, EUROPE_WY); });
   document.getElementById('btnZoomIn').addEventListener('click', function(){ setZoomSpan(curSpan*0.72); });
   document.getElementById('btnZoomOut').addEventListener('click', function(){ setZoomSpan(curSpan/0.72); });
@@ -1264,34 +1272,90 @@
     wheelRaf = requestAnimationFrame(function(){ wheelRaf=null; refreshView(); });
   }, { passive:false });
 
-  // ---------- pinch-to-zoom the map on touch, anchored at the pinch midpoint ----------
-  var pinchDist = null;
-  function touchDist(t0, t1){ var dx=t1.clientX-t0.clientX, dy=t1.clientY-t0.clientY; return Math.sqrt(dx*dx+dy*dy); }
-  mapViewportEl.addEventListener('touchstart', function(e){
-    if(e.touches.length===2){ pinchDist = touchDist(e.touches[0], e.touches[1]); }
-  }, { passive:true });
-  mapViewportEl.addEventListener('touchmove', function(e){
-    if(e.touches.length!==2 || pinchDist===null) return;
-    e.preventDefault(); // only while actively pinching — a one-finger touch still scrolls the page normally
-    var rect = mapViewportEl.getBoundingClientRect();
-    var t0 = e.touches[0], t1 = e.touches[1];
-    var midX = (t0.clientX+t1.clientX)/2, midY = (t0.clientY+t1.clientY)/2;
-    var px = (midX-rect.left)/rect.width, py = (midY-rect.top)/rect.height;
-    var cursorWx = view.lonMin + px*(view.lonMax-view.lonMin);
-    var cursorWy = view.latMin + py*(view.latMax-view.latMin);
-    var newDist = touchDist(t0, t1);
-    var factor = pinchDist / Math.max(1, newDist);
-    var newSpan = Math.min(MAX_SPAN, Math.max(MIN_SPAN, curSpan*factor));
-    focus.wx = cursorWx + (focus.wx-cursorWx) * (newSpan/curSpan);
-    focus.wy = cursorWy + (focus.wy-cursorWy) * (newSpan/curSpan);
-    curSpan = newSpan;
-    clampFocus();
-    pinchDist = newDist;
+  // ---------- drag-to-pan the map, one finger (or the mouse) moves it; two fingers pinch-zoom ----------
+  var DRAG_THRESHOLD = 4; // px of movement before a press counts as a drag rather than a tap/click
+  function scheduleRefresh(){
     if(wheelRaf) return;
     wheelRaf = requestAnimationFrame(function(){ wheelRaf=null; refreshView(); });
+  }
+  function touchDist(t0, t1){ var dx=t1.clientX-t0.clientX, dy=t1.clientY-t0.clientY; return Math.sqrt(dx*dx+dy*dy); }
+  function panByPixels(dx, dy, rect){
+    focus.wx -= dx * (view.lonMax-view.lonMin)/rect.width;
+    focus.wy -= dy * (view.latMax-view.latMin)/rect.height;
+    clampFocus();
+  }
+
+  var touchGesture = null;
+  function startPan(x, y){ touchGesture = { mode:'pan', startX:x, startY:y, startFocus:{wx:focus.wx, wy:focus.wy}, moved:false }; }
+  mapViewportEl.addEventListener('touchstart', function(e){
+    if(e.touches.length===1){ startPan(e.touches[0].clientX, e.touches[0].clientY); }
+    else if(e.touches.length===2){ touchGesture = { mode:'pinch', dist: touchDist(e.touches[0], e.touches[1]) }; }
+  }, { passive:true });
+  mapViewportEl.addEventListener('touchmove', function(e){
+    if(!touchGesture) return;
+    var rect = mapViewportEl.getBoundingClientRect();
+    if(touchGesture.mode==='pan' && e.touches.length===1){
+      var dx = e.touches[0].clientX-touchGesture.startX, dy = e.touches[0].clientY-touchGesture.startY;
+      if(!touchGesture.moved && Math.abs(dx)<DRAG_THRESHOLD && Math.abs(dy)<DRAG_THRESHOLD) return; // still just a tap
+      touchGesture.moved = true;
+      e.preventDefault();
+      focus.wx = touchGesture.startFocus.wx - dx*(view.lonMax-view.lonMin)/rect.width;
+      focus.wy = touchGesture.startFocus.wy - dy*(view.latMax-view.latMin)/rect.height;
+      clampFocus();
+      scheduleRefresh();
+    } else if(touchGesture.mode==='pinch' && e.touches.length===2){
+      e.preventDefault();
+      var t0 = e.touches[0], t1 = e.touches[1];
+      var midX = (t0.clientX+t1.clientX)/2, midY = (t0.clientY+t1.clientY)/2;
+      var px = (midX-rect.left)/rect.width, py = (midY-rect.top)/rect.height;
+      var cursorWx = view.lonMin + px*(view.lonMax-view.lonMin);
+      var cursorWy = view.latMin + py*(view.latMax-view.latMin);
+      var newDist = touchDist(t0, t1);
+      var factor = touchGesture.dist / Math.max(1, newDist);
+      var newSpan = Math.min(MAX_SPAN, Math.max(MIN_SPAN, curSpan*factor));
+      focus.wx = cursorWx + (focus.wx-cursorWx) * (newSpan/curSpan);
+      focus.wy = cursorWy + (focus.wy-cursorWy) * (newSpan/curSpan);
+      curSpan = newSpan;
+      clampFocus();
+      touchGesture.dist = newDist;
+      scheduleRefresh();
+    }
   }, { passive:false });
-  mapViewportEl.addEventListener('touchend', function(e){ if(e.touches.length<2) pinchDist = null; }, { passive:true });
-  mapViewportEl.addEventListener('touchcancel', function(){ pinchDist = null; }, { passive:true });
+  function touchGestureEnd(e){
+    if(e.touches.length===1){ startPan(e.touches[0].clientX, e.touches[0].clientY); }
+    else if(e.touches.length===0){ touchGesture = null; }
+  }
+  mapViewportEl.addEventListener('touchend', touchGestureEnd, { passive:true });
+  mapViewportEl.addEventListener('touchcancel', function(){ touchGesture = null; }, { passive:true });
+
+  // desktop: click-and-drag the map the same way (a plain click still reaches
+  // whatever's underneath — the drag is only "real" past a small threshold,
+  // and that click gets suppressed so dragging over a heart doesn't open it)
+  var mouseDrag = null, suppressNextClick = false;
+  mapViewportEl.addEventListener('mousedown', function(e){
+    if(e.button !== 0) return;
+    mouseDrag = { startX:e.clientX, startY:e.clientY, moved:false };
+  });
+  window.addEventListener('mousemove', function(e){
+    if(!mouseDrag) return;
+    var dx = e.clientX-mouseDrag.startX, dy = e.clientY-mouseDrag.startY;
+    if(!mouseDrag.moved){
+      if(Math.abs(dx)<DRAG_THRESHOLD && Math.abs(dy)<DRAG_THRESHOLD) return;
+      mouseDrag.moved = true;
+      mapViewportEl.classList.add('dragging');
+    }
+    var rect = mapViewportEl.getBoundingClientRect();
+    panByPixels(e.movementX || 0, e.movementY || 0, rect);
+    scheduleRefresh();
+  });
+  window.addEventListener('mouseup', function(){
+    if(mouseDrag && mouseDrag.moved){ suppressNextClick = true; }
+    mouseDrag = null;
+    mapViewportEl.classList.remove('dragging');
+  });
+  mapViewportEl.addEventListener('click', function(e){
+    if(suppressNextClick){ suppressNextClick = false; e.stopPropagation(); e.preventDefault(); }
+  }, true);
 
   // ---------- functional scrollbars: pan whenever zoomed in past the world view ----------
   function stepFor(){ return isPannable() ? curSpan*0.25 : 0; }
@@ -1305,11 +1369,11 @@
     var rect = track.getBoundingClientRect();
     if(axis==='v'){
       var frac = (e.clientY-rect.top)/rect.height;
-      var targetWy = frac*500;
+      var targetWy = frac*H;
       panBy(0, targetWy>focus.wy ? curSpan*0.35 : -curSpan*0.35);
     } else {
       var fracX = (e.clientX-rect.left)/rect.width;
-      var targetWx = fracX*1000;
+      var targetWx = fracX*W;
       panBy(targetWx>focus.wx ? curSpan*0.35 : -curSpan*0.35, 0);
     }
   }
@@ -1334,10 +1398,10 @@
       function onMove(ev){
         if(axis==='v'){
           var dy = ev.clientY-startY;
-          focus.wy = startFocus.wy + (dy/trackRect.height)*500;
+          focus.wy = startFocus.wy + (dy/trackRect.height)*H;
         } else {
           var dx = ev.clientX-startX;
-          focus.wx = startFocus.wx + (dx/trackRect.width)*1000;
+          focus.wx = startFocus.wx + (dx/trackRect.width)*W;
         }
         clampFocus();
         if(raf) return;
