@@ -878,12 +878,22 @@
   var focus = { wx:W/2, wy:H/2 }; // warped-space center of the current view
   var view = { lonMin:0, lonMax:W, latMin:0, latMax:H };
 
+  // .map-viewport's own on-screen box aspect (height/width) — on mobile it's
+  // taller (1) than the map's fixed 2:1 content (ASPECT), so object-fit:cover
+  // crops the sides to fill it. That crop is constant regardless of zoom, so
+  // the pan clamp below widens by the same amount on that axis — otherwise
+  // dragging could never reach the world's true edges (e.g. the US, Asia)
+  // even though "zoomed out" nominally includes them.
+  var SCREEN_ASPECT = IS_MOBILE ? 1 : ASPECT;
+  var VIS_W_FRAC = SCREEN_ASPECT >= ASPECT ? ASPECT/SCREEN_ASPECT : 1;
+  var VIS_H_FRAC = SCREEN_ASPECT >= ASPECT ? 1 : SCREEN_ASPECT/ASPECT;
+
   function computeView(){
     var hx = curSpan/2, hy = (curSpan*ASPECT)/2;
     return { lonMin:focus.wx-hx, lonMax:focus.wx+hx, latMin:focus.wy-hy, latMax:focus.wy+hy };
   }
   function clampFocus(){
-    var hx = curSpan/2, hy = (curSpan*ASPECT)/2;
+    var hx = (curSpan/2)*VIS_W_FRAC, hy = ((curSpan*ASPECT)/2)*VIS_H_FRAC;
     var lonLo=hx, lonHi=W-hx, latLo=hy, latHi=H-hy;
     focus.wx = lonLo>lonHi ? W/2 : Math.min(lonHi, Math.max(lonLo, focus.wx));
     focus.wy = latLo>latHi ? H/2 : Math.min(latHi, Math.max(latLo, focus.wy));
