@@ -276,13 +276,16 @@
     background:var(--ocean);
     overflow:hidden;
     line-height:0;
+    /* the map's own data is always 2:1 (see #mapCanvas/#mapOverlay below,
+       which cover/slice into whatever this box's aspect-ratio actually is) */
+    aspect-ratio:2/1;
     /* a touch on the map drives our own pan/zoom instead of scrolling or
        zooming the page, so opt out of the browser's own touch gestures here */
     touch-action:none;
     cursor:grab;
   }
   .map-viewport.dragging{ cursor:grabbing; }
-  #mapCanvas{ display:block; width:100%; height:auto; image-rendering:pixelated; image-rendering:crisp-edges; }
+  #mapCanvas{ display:block; width:100%; height:100%; object-fit:cover; image-rendering:pixelated; image-rendering:crisp-edges; }
   #mapOverlay{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; touch-action:manipulation; }
 
   .scrollbar-v{ grid-column:2; grid-row:1; display:flex; flex-direction:column; background:var(--chrome); }
@@ -491,6 +494,11 @@
     .map-shell{ grid-template-columns:1fr; grid-template-rows:1fr; }
     .scrollbar-v, .scrollbar-h, .sb-corner{ display:none; }
 
+    /* the window itself is taller (more of the screen), while the map's own
+       data keeps its true 2:1 aspect — #mapCanvas/#mapOverlay cover/slice
+       into this taller box, cropping the sides instead of stretching */
+    .map-viewport{ aspect-ratio:1/1; }
+
     /* popup: a bit more breathing room, with a title bar sized to match */
     .popup{ max-width:94vw; }
     .popup .titlebar{ padding:10px 10px; gap:10px; }
@@ -568,7 +576,7 @@
         <div class="map-shell">
           <div class="map-viewport" id="mapViewport">
             <canvas id="mapCanvas" width="360" height="180"></canvas>
-            <svg id="mapOverlay" viewBox="0 0 1000 500" role="img" aria-label="World map with pins for each friend's city">
+            <svg id="mapOverlay" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid slice" role="img" aria-label="World map with pins for each friend's city">
               <g class="graticule" id="graticule"></g>
               <polyline class="tour-line" id="tourLine" points=""></polyline>
               <g id="pins"></g>
@@ -734,11 +742,12 @@
   })();
 
   // ---------- real coastline data (Natural Earth 110m, via world-atlas), rasterized live ----------
-  // on mobile the map viewport is twice as tall relative to its width, so the
-  // warped-space canvas and grid follow the same ratio — this keeps the same
-  // pixel density (no blur/distortion), it's just working with a taller canvas.
+  // the map's own projection is always 2:1 (true to the real coastline data,
+  // never stretched) — on mobile only the on-screen window is taller, via
+  // CSS aspect-ratio + preserveAspectRatio="slice" cropping the sides, not
+  // by warping the underlying coordinate system.
   var IS_MOBILE = window.matchMedia('(max-width:560px)').matches;
-  var W = 1000, H = IS_MOBILE ? 1000 : 500;
+  var W = 1000, H = 500;
   var ASPECT = H/W;
   var GRID_COLS = 360, GRID_ROWS = Math.round(GRID_COLS*ASPECT);
 
@@ -777,9 +786,7 @@
 
   // ---------- projection: a fisheye-style warp that inflates Europe, plus gradual zoom ----------
   // "warped space" is our map's real coordinate system: 0..W (x) by 0..H (y),
-  // exactly matching the SVG viewBox (H is taller on mobile so the map takes
-  // up more of the screen, without distorting anything — see IS_MOBILE above).
-  // Real lon/lat run through a piecewise-linear
+  // exactly matching the SVG viewBox. Real lon/lat run through a piecewise-linear
   // warp on the way in, so Europe occupies a disproportionately large share of
   // that space — the rest of the world compresses to fill what's left. Zoom/pan/
   // scrollbars all operate in this warped space; only the map rasterizer needs to
@@ -855,6 +862,11 @@
   function unwarpLat(w){ return LAT_AXIS.unwarp(H-w); }
 
   var MIN_SPAN = 100, MAX_SPAN = 1000; // warped-lon-units visible; height follows at the current aspect
+  // on mobile the on-screen window is taller than the map's own 2:1 canvas and
+  // crops the sides (see .map-viewport aspect-ratio + preserveAspectRatio
+  // "slice" below), so the default "world" view is zoomed in an extra 15% —
+  // it won't show the whole world at once, which is fine.
+  var WORLD_SPAN = IS_MOBILE ? MAX_SPAN*0.85 : MAX_SPAN;
   var EUROPE_WX = (LON_AXIS.boxMin+LON_AXIS.boxMax)/2;
   var EUROPE_WY = H-(LAT_AXIS.boxMin+LAT_AXIS.boxMax)/2;
   var EUROPE_BOX_W = LON_AXIS.boxMax-LON_AXIS.boxMin, EUROPE_BOX_H = LAT_AXIS.boxMax-LAT_AXIS.boxMin;
@@ -862,7 +874,7 @@
   // box dimension needs the larger span to fit with padding (view height = span*ASPECT)
   var EUROPE_SPAN = Math.min(MAX_SPAN, Math.max(EUROPE_BOX_W, EUROPE_BOX_H/ASPECT) * 1.12);
 
-  var curSpan = MAX_SPAN;
+  var curSpan = WORLD_SPAN;
   var focus = { wx:W/2, wy:H/2 }; // warped-space center of the current view
   var view = { lonMin:0, lonMax:W, latMin:0, latMax:H };
 
@@ -1247,7 +1259,7 @@
   document.getElementById('btnNight').addEventListener('click', toggleNight);
   document.getElementById('btnTour').addEventListener('click', toggleTour);
   document.getElementById('btnSurprise').addEventListener('click', surprise);
-  document.getElementById('btnWorld').addEventListener('click', function(){ flyTo(MAX_SPAN, W/2, H/2); });
+  document.getElementById('btnWorld').addEventListener('click', function(){ flyTo(WORLD_SPAN, W/2, H/2); });
   document.getElementById('btnEurope').addEventListener('click', function(){ flyTo(EUROPE_SPAN, EUROPE_WX, EUROPE_WY); });
   document.getElementById('btnZoomIn').addEventListener('click', function(){ setZoomSpan(curSpan*0.72); });
   document.getElementById('btnZoomOut').addEventListener('click', function(){ setZoomSpan(curSpan/0.72); });
