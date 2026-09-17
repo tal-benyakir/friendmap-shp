@@ -1,0 +1,1300 @@
+<title>Friend Atlas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
+<style>
+  :root{
+    --page:#e9b8d6;
+    --page-dot:#d99fc2;
+    --titlebar-hi:#ff8fc0;
+    --titlebar:#e0398f;
+    --titlebar-dark:#9c1f63;
+    --chrome:#f2c6dd;
+    --chrome-lo:#c98aad;
+    --panel-border:#7a1a4e;
+    --content:#f6e9db;
+    --ocean:#2e6fd9;
+    --land:#39c23f;
+    --ink:#5c2340;
+    --ink-soft:#8a4d6c;
+    --gold:#e8b03c;
+    --heart:#e64d94;
+    --heart-hover:#8a3fc9;
+    --heart-fan:#ffb3d6;
+    --white:#fff8f2;
+    --black:#3a1428;
+    --shadow: 7px 7px 0 rgba(58,20,40,0.4);
+  }
+
+  *{ box-sizing:border-box; }
+
+  html{
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Cpolygon points='2,1 2,15 5,12 7,16 9,15 7,11 12,11' fill='black' stroke='white' stroke-width='1'/%3E%3C/svg%3E") 2 2, default;
+  }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 15% 20%, var(--page-dot) 0 4px, transparent 4px) 0 0/40px 40px,
+      radial-gradient(circle at 55% 70%, var(--page-dot) 0 4px, transparent 4px) 0 0/40px 40px,
+      var(--page);
+    color:var(--ink);
+    font-family:'VT323', monospace;
+    padding: 28px 16px 40px;
+    display:flex;
+    justify-content:center;
+  }
+
+  .dither{ position:relative; }
+  .dither::after{
+    content:"";
+    position:absolute; inset:0;
+    background-image: repeating-conic-gradient(rgba(255,255,255,.35) 0% 25%, transparent 0% 50%);
+    background-size: 3px 3px;
+    mix-blend-mode: overlay;
+    pointer-events:none;
+  }
+
+  .desktop{
+    width:100%;
+    max-width:980px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+
+  .intro{ text-align:center; color:var(--titlebar-dark); }
+  .intro h1{
+    font-family:'Press Start 2P', monospace;
+    font-size:clamp(15px,3.2vw,24px);
+    margin:0 0 10px;
+    text-wrap:balance;
+    letter-spacing:1px;
+    text-shadow:2px 2px 0 var(--white);
+  }
+  .intro p{ font-size:20px; margin:0; color:var(--ink-soft); }
+
+  .window{
+    background:var(--content);
+    border:3px solid var(--black);
+    box-shadow:
+      inset 2px 2px 0 var(--white),
+      inset -2px -2px 0 rgba(0,0,0,.35),
+      var(--shadow);
+  }
+  .window.collapsed .below-titlebar{ display:none; }
+
+  .titlebar{
+    position:relative;
+    color:var(--white);
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:7px 8px;
+    border-bottom:3px solid var(--black);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 45%),
+      linear-gradient(180deg, var(--titlebar-hi) 0%, var(--titlebar) 55%, var(--titlebar-dark) 100%);
+    overflow:hidden;
+  }
+  .titlebar .icon{
+    width:20px;height:20px;
+    background:var(--white);
+    border:2px solid var(--black);
+    color:var(--titlebar-dark);
+    flex:none;
+  }
+  .titlebar .name{
+    font-family:'Press Start 2P', monospace;
+    font-size:11px;
+    flex:1;
+    letter-spacing:0.5px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    text-shadow:1px 1px 0 rgba(0,0,0,.4);
+  }
+  .win-btn{
+    width:20px;height:20px;
+    background:var(--chrome);
+    border:2px solid;
+    border-color:var(--white) var(--black) var(--black) var(--white);
+    color:var(--ink);
+    font-family:'Press Start 2P', monospace;
+    font-size:9px;
+    line-height:1;
+    display:flex;align-items:center;justify-content:center;
+    flex:none;
+    cursor:pointer;
+  }
+  .win-btn:active{ border-color:var(--black) var(--white) var(--white) var(--black); }
+
+  .menubar{
+    background:var(--chrome);
+    border-bottom:3px solid var(--black);
+    display:flex;
+    gap:2px;
+    padding:5px 6px;
+    font-family:'VT323', monospace;
+    font-size:19px;
+    position:relative;
+  }
+  .menubar button{
+    background:transparent;
+    border:1px solid transparent;
+    color:var(--titlebar-dark);
+    font:inherit;
+    padding:2px 10px;
+    cursor:pointer;
+  }
+  .menubar button:hover, .menubar button[aria-expanded="true"]{
+    border-color:var(--white) var(--black) var(--black) var(--white);
+    background:var(--chrome-lo);
+  }
+  .menu-drop{
+    position:absolute;
+    top:100%;
+    left:6px;
+    margin-top:2px;
+    background:var(--content);
+    border:2px solid;
+    border-color:var(--white) var(--black) var(--black) var(--white);
+    box-shadow:4px 4px 0 rgba(58,20,40,.35);
+    min-width:220px;
+    z-index:20;
+    font-size:18px;
+    padding:3px 0;
+  }
+  .menu-drop[hidden]{ display:none; }
+  .menu-drop button{
+    display:block; width:100%; text-align:left;
+    background:none; border:none; color:var(--ink);
+    padding:6px 14px; cursor:pointer; font:inherit;
+  }
+  .menu-drop button:hover{ background:var(--titlebar); color:var(--white); }
+
+  .toolbar{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:9px 10px;
+    background:var(--content);
+    border-bottom:3px solid var(--black);
+    flex-wrap:wrap;
+  }
+
+  .names-toggle{
+    display:flex; align-items:center; gap:7px;
+    cursor:pointer;
+    font-size:18px;
+    color:var(--ink);
+    user-select:none;
+  }
+  .names-toggle .box{
+    width:18px;height:18px;
+    background:var(--white);
+    border:2px solid;
+    border-color:var(--black) var(--white) var(--white) var(--black);
+    display:flex;align-items:center;justify-content:center;
+    flex:none;
+  }
+  .names-toggle .box svg{ width:12px;height:12px; display:none; }
+  .names-toggle input:checked ~ .box svg{ display:block; }
+  .names-toggle input{ position:absolute; opacity:0; width:0; height:0; }
+
+  .tool-btn{
+    width:32px;height:32px;
+    background:var(--chrome);
+    border:2px solid;
+    border-color:var(--white) var(--black) var(--black) var(--white);
+    color:var(--titlebar-dark);
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    flex:none;
+  }
+  .tool-btn svg{ width:16px; height:16px; }
+  .tool-btn[aria-pressed="true"]{
+    background:var(--titlebar);
+    color:var(--white);
+    border-color:var(--black) var(--white) var(--white) var(--black);
+  }
+  .tool-btn:active{ border-color:var(--black) var(--white) var(--white) var(--black); }
+
+  .zoom-group{ display:flex; }
+  .zoom-btn{
+    background:var(--chrome);
+    border:2px solid;
+    border-color:var(--white) var(--black) var(--black) var(--white);
+    color:var(--titlebar-dark);
+    font-family:'VT323', monospace;
+    font-size:16px;
+    padding:5px 9px;
+    cursor:pointer;
+    margin-left:-2px;
+  }
+  .zoom-btn:first-child{ margin-left:0; }
+  .zoom-btn[aria-pressed="true"]{
+    background:var(--titlebar);
+    color:var(--white);
+    border-color:var(--black) var(--white) var(--white) var(--black);
+  }
+
+  .search-wrap{
+    flex:1;
+    min-width:170px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    background:var(--white);
+    border:2px solid;
+    border-color:var(--black) var(--white) var(--white) var(--black);
+    box-shadow:inset 1px 1px 0 rgba(0,0,0,.25);
+    padding:0 8px;
+  }
+  .search-wrap svg{ width:14px; height:14px; flex:none; color:var(--ink-soft); }
+  .search-wrap input{
+    border:none; outline:none; background:transparent;
+    font-family:'VT323', monospace; font-size:19px;
+    color:var(--ink); flex:1; min-width:0; padding:6px 0;
+  }
+  .search-wrap input::placeholder{ color:var(--ink-soft); }
+
+  .map-wrap{ padding:10px; }
+  .map-shell{
+    display:grid;
+    grid-template-columns:1fr 18px;
+    grid-template-rows:1fr 18px;
+    border:2px solid;
+    border-color:var(--black) var(--white) var(--white) var(--black);
+  }
+  .map-viewport{
+    grid-column:1; grid-row:1;
+    position:relative;
+    background:var(--ocean);
+    overflow:hidden;
+    line-height:0;
+  }
+  #mapCanvas{ display:block; width:100%; height:auto; image-rendering:pixelated; image-rendering:crisp-edges; }
+  #mapOverlay{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; touch-action:manipulation; }
+
+  .scrollbar-v{ grid-column:2; grid-row:1; display:flex; flex-direction:column; background:var(--chrome); }
+  .scrollbar-h{ grid-column:1; grid-row:2; display:flex; background:var(--chrome); }
+  .sb-corner{ grid-column:2; grid-row:2; background:var(--chrome-lo); border:1px solid var(--black); }
+  .sb-arrow{
+    background:var(--chrome);
+    border:2px solid;
+    border-color:var(--white) var(--black) var(--black) var(--white);
+    color:var(--titlebar-dark);
+    font-size:9px;
+    line-height:1;
+    flex:none;
+    cursor:pointer;
+  }
+  .sb-arrow:active{ border-color:var(--black) var(--white) var(--white) var(--black); }
+  .scrollbar-v .sb-arrow{ width:100%; height:16px; }
+  .scrollbar-h .sb-arrow{ height:100%; width:16px; }
+  .sb-track{ flex:1; position:relative; background:var(--chrome-lo); cursor:pointer; }
+  .scrollbar-v .sb-thumb{ position:absolute; left:1px; right:1px; top:30%; height:34%; background:var(--chrome); border:2px solid; border-color:var(--white) var(--black) var(--black) var(--white); cursor:grab; touch-action:none; }
+  .scrollbar-h .sb-thumb{ position:absolute; top:1px; bottom:1px; left:38%; width:26%; background:var(--chrome); border:2px solid; border-color:var(--white) var(--black) var(--black) var(--white); cursor:grab; touch-action:none; }
+  .scrollbar-v.inert, .scrollbar-h.inert{ opacity:.45; }
+  .scrollbar-v.inert .sb-arrow, .scrollbar-h.inert .sb-arrow, .scrollbar-v.inert .sb-track, .scrollbar-h.inert .sb-track, .scrollbar-v.inert .sb-thumb, .scrollbar-h.inert .sb-thumb{ cursor:default; pointer-events:none; }
+
+  .graticule line{ stroke:rgba(255,255,255,.4); stroke-width:1; }
+  .graticule{ opacity:0; transition:opacity .2s; }
+  .graticule.on{ opacity:1; }
+
+  .tour-line{
+    fill:none; stroke:var(--gold); stroke-width:2.5;
+    stroke-dasharray:5 5; opacity:0; transition:opacity .2s;
+  }
+  .tour-line.on{ opacity:0.9; }
+  @media (prefers-reduced-motion: no-preference){
+    .tour-line.on{ animation: dash 16s linear infinite; }
+  }
+  @keyframes dash{ to{ stroke-dashoffset:-200; } }
+
+  .pin{ cursor:pointer; pointer-events:auto; }
+  .pin-visual{ transform-box:fill-box; transform-origin:center; transform:scale(var(--zs,1)); }
+  .pin .pin-heart{ fill:var(--heart); shape-rendering:crispEdges; transition:fill .12s; transform-box:fill-box; transform-origin:center; }
+  .pin:hover .pin-heart, .pin:focus-visible .pin-heart{ fill:var(--heart-hover); }
+  /* hearts fanned out from an expanded cluster read as a lighter, baby-pink family */
+  .fan .pin .pin-heart{ fill:var(--heart-fan); }
+  .fan .pin:hover .pin-heart, .fan .pin:focus-visible .pin-heart{ fill:var(--heart-hover); }
+  .pin.dim{ opacity:0.15; }
+  .pin-label{
+    font-family:'VT323', monospace;
+    font-size:calc(14px * var(--zs,1));
+    fill:var(--black);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .12s;
+    paint-order:stroke;
+    stroke:var(--content);
+    stroke-width:3px;
+  }
+  .pin:focus{ outline:none; }
+
+  /* a single shared label, repositioned via JS instead of reordering pins in
+     the DOM — reordering on hover used to break click delivery, and without
+     it a label can render underneath a nearer heart. This always paints on
+     top since it's the last element in the overlay, and it never moves any
+     pin, so clicking is unaffected. */
+  .hover-label-layer{ pointer-events:none; }
+  .hover-label-text{
+    font-family:'VT323', monospace;
+    font-size:calc(21px * var(--zs,1));
+    fill:var(--black);
+    opacity:0;
+    transition:opacity .1s;
+    paint-order:stroke;
+    stroke:var(--content);
+    stroke-width:3px;
+  }
+
+  .cluster.offscreen{ display:none; }
+  .cluster.dim{ opacity:0.15; }
+  .cluster .badge{
+    font-family:'Press Start 2P', monospace;
+    font-size:calc(8px * var(--zs,1));
+    fill:var(--white);
+    paint-order:stroke;
+    stroke:var(--heart-hover);
+    stroke-width:3px;
+    stroke-linejoin:round;
+    pointer-events:none;
+  }
+  .cluster.expanded > .pin > .pin-heart{ opacity:.35; }
+  .fan{ opacity:0; pointer-events:none; transition:opacity .15s; }
+  .cluster.expanded .fan{ opacity:1; pointer-events:auto; }
+  .cluster-names text{
+    font-family:'VT323', monospace;
+    font-size:calc(12px * var(--zs,1));
+    fill:var(--black);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .12s;
+    paint-order:stroke;
+    stroke:var(--content);
+    stroke-width:3px;
+  }
+  body.show-all-names .cluster:not(.expanded) .cluster-names text{ opacity:1; }
+  body.show-all-names .cluster:not(.expanded) > .pin > .pin-label{ opacity:1; }
+  body.show-all-names .fan .pin-label{ opacity:1; }
+
+  .statusbar{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 12px;
+    background:var(--chrome);
+    border-top:3px solid var(--black);
+    font-size:18px;
+    flex-wrap:wrap;
+  }
+  .avatar{
+    width:32px;height:32px;
+    background:var(--titlebar);
+    border:2px solid;
+    border-color:var(--white) var(--black) var(--black) var(--white);
+    color:var(--white);
+    flex:none;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .avatar svg{ width:18px; height:18px; }
+  .status-count-pals{ color:var(--heart); font-weight:bold; }
+  .status-count-countries{ color:var(--heart-hover); font-weight:bold; }
+  .status-updated{ color:var(--gold); font-weight:bold; }
+
+  .reopen{
+    display:none;
+    font-family:'Press Start 2P', monospace;
+    font-size:11px;
+    color:var(--titlebar-dark);
+    background:var(--chrome);
+    border:2px solid;
+    border-color:var(--white) var(--black) var(--black) var(--white);
+    padding:10px 14px;
+    cursor:pointer;
+    margin:0 auto;
+  }
+  .window.closed{ display:none; }
+  .window.closed ~ .reopen{ display:block; }
+
+  .backdrop{
+    position:fixed; inset:0;
+    background:rgba(58,20,40,0.5);
+    display:flex; align-items:center; justify-content:center;
+    padding:20px; z-index:50;
+  }
+  .backdrop[hidden]{ display:none; }
+  .popup{
+    width:100%; max-width:340px;
+    background:var(--content);
+    border:3px solid var(--black);
+    box-shadow: inset 2px 2px 0 var(--white), inset -2px -2px 0 rgba(0,0,0,.35), var(--shadow);
+  }
+  .popup.popup-wide{ max-width:460px; }
+  .popup .titlebar .name{ font-size:10px; }
+  .popup-body{ padding:18px; }
+  .popup-face{ font-size:26px; text-align:center; color:var(--heart); margin-bottom:8px; }
+  .popup-name{
+    font-family:'Press Start 2P', monospace;
+    font-size:13px; color:var(--titlebar-dark);
+    text-align:center; margin:0 0 12px; text-wrap:balance;
+  }
+  .popup-byline{
+    font-size:18px; color:var(--ink-soft);
+    text-align:center; margin:-4px 0 10px;
+  }
+  .popup-row{ display:flex; gap:8px; font-size:19px; margin-bottom:6px; }
+  .popup-row .k{ color:var(--ink-soft); flex:none; width:78px; }
+  .popup-note{
+    margin-top:12px; padding:10px;
+    background:var(--white);
+    border:2px solid; border-color:var(--black) var(--white) var(--white) var(--black);
+    box-shadow:inset 1px 1px 0 rgba(0,0,0,.15);
+    font-size:19px; color:var(--ink);
+    line-height:1.4;
+  }
+
+  .legend{ text-align:center; font-size:17px; color:var(--titlebar-dark); }
+  .legend b{ color:var(--heart); }
+
+  @media (max-width:560px){
+    .titlebar .name{ font-size:9px; }
+    .popup-name{ font-size:11px; }
+    .search-wrap{ order:10; flex-basis:100%; }
+  }
+</style>
+
+<div class="desktop">
+  <div class="intro">
+    <h1>friendmap.exe</h1>
+    <p>an atlas of sweethomeparis ദ്ദി(˵ •̀ ᴗ - ˵ ) ✧</p>
+  </div>
+
+  <div class="window" id="win">
+    <div class="titlebar dither">
+      <div class="icon" id="titleIcon"></div>
+      <div class="name">friendmap.exe — world.map</div>
+      <button class="win-btn" id="btnMin" title="minimize" aria-label="minimize">_</button>
+      <button class="win-btn" id="btnClose" title="close" aria-label="close">X</button>
+    </div>
+
+    <div class="below-titlebar">
+      <nav class="menubar dither">
+        <button id="menuFileBtn" aria-haspopup="true" aria-expanded="false">File</button>
+        <button id="menuEditBtn" aria-haspopup="true" aria-expanded="false">Edit</button>
+        <button id="menuViewBtn" aria-haspopup="true" aria-expanded="false">View</button>
+        <button id="menuHelpBtn" aria-haspopup="true" aria-expanded="false">Help</button>
+
+        <div class="menu-drop" id="menuFile" hidden>
+          <button id="actNewFriend">✧ add a friend (edit source)</button>
+          <button id="actRandom">✧ surprise me</button>
+        </div>
+        <div class="menu-drop" id="menuEdit" hidden>
+          <button id="actClearSearch">✧ clear search</button>
+        </div>
+        <div class="menu-drop" id="menuView" hidden>
+          <button id="actToggleGrid">✧ toggle graticule lines</button>
+          <button id="actToggleNight">✧ toggle night mode</button>
+          <button id="actToggleTour">✧ toggle friend tour line</button>
+        </div>
+        <div class="menu-drop" id="menuHelp" hidden>
+          <button id="actAbout">✧ for when you are missing ur friends</button>
+        </div>
+      </nav>
+
+      <div class="toolbar dither">
+        <label class="names-toggle">
+          <input type="checkbox" id="chkLabels">
+          <span class="box"><svg viewBox="0 0 12 12"><polyline points="1,6 4,10 11,2" fill="none" stroke="currentColor" stroke-width="2"/></svg></span>
+          show all names
+        </label>
+        <button class="tool-btn" id="btnNight" title="toggle night mode" aria-pressed="false"></button>
+        <button class="tool-btn" id="btnTour" title="toggle friend tour line" aria-pressed="false"></button>
+        <button class="tool-btn" id="btnSurprise" title="surprise me"></button>
+        <div class="zoom-group" role="group" aria-label="zoom level">
+          <button class="zoom-btn" id="btnZoomOut" title="zoom out">−</button>
+          <button class="zoom-btn" id="btnWorld">world</button>
+          <button class="zoom-btn" id="btnEurope">europe</button>
+          <button class="zoom-btn" id="btnZoomIn" title="zoom in">+</button>
+        </div>
+        <div class="search-wrap">
+          <svg viewBox="0 0 16 16" id="searchIcon"></svg>
+          <input id="search" type="search" placeholder="search the atlas..." aria-label="find a friend or a city">
+        </div>
+      </div>
+
+      <div class="map-wrap">
+        <div class="map-shell">
+          <div class="map-viewport" id="mapViewport">
+            <canvas id="mapCanvas" width="360" height="180"></canvas>
+            <svg id="mapOverlay" viewBox="0 0 1000 500" role="img" aria-label="World map with pins for each friend's city">
+              <g class="graticule" id="graticule"></g>
+              <polyline class="tour-line" id="tourLine" points=""></polyline>
+              <g id="pins"></g>
+            </svg>
+          </div>
+          <div class="scrollbar-v inert" id="sbV">
+            <button class="sb-arrow" id="sbUp">▲</button>
+            <div class="sb-track" id="sbTrackV"><div class="sb-thumb" id="sbThumbV"></div></div>
+            <button class="sb-arrow" id="sbDown">▼</button>
+          </div>
+          <div class="scrollbar-h inert" id="sbH">
+            <button class="sb-arrow" id="sbLeft">◀</button>
+            <div class="sb-track" id="sbTrackH"><div class="sb-thumb" id="sbThumbH"></div></div>
+            <button class="sb-arrow" id="sbRight">▶</button>
+          </div>
+          <div class="sb-corner"></div>
+        </div>
+      </div>
+
+      <div class="statusbar">
+        <div class="avatar" id="avatarIcon"></div>
+        <div class="status-text">
+          pals mapped: <span class="status-count-pals" id="countPals">0</span>
+          &nbsp;·&nbsp; countries: <span class="status-count-countries" id="countCountries">0</span>
+          &nbsp;·&nbsp; last updated: <span class="status-updated" id="statusDate"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <button class="reopen" id="btnReopen">▶ reopen friendmap.exe</button>
+
+  <p class="legend">click a <b>♥</b> to open a friend's little window · a <b>×N</b> heart holds a few people — click to fan them out</p>
+</div>
+
+<div class="backdrop" id="backdrop" hidden>
+  <div class="popup" role="dialog" aria-modal="true" aria-labelledby="popupName">
+    <div class="titlebar dither">
+      <div class="icon" id="popupIcon"></div>
+      <div class="name" id="popupTitle">friend.exe</div>
+      <button class="win-btn" id="popupClose" aria-label="close">X</button>
+    </div>
+    <div class="popup-body">
+      <div class="popup-face" id="popupFace"></div>
+      <p class="popup-name" id="popupName"></p>
+      <div class="popup-row"><span class="k">city</span><span id="popupCity"></span></div>
+      <div class="popup-row"><span class="k">country</span><span id="popupCountry"></span></div>
+      <div class="popup-note" id="popupNote"></div>
+    </div>
+  </div>
+</div>
+
+<div class="backdrop" id="missingBackdrop" hidden>
+  <div class="popup popup-wide" role="dialog" aria-modal="true" aria-labelledby="missingTitle">
+    <div class="titlebar dither">
+      <div class="icon" id="missingIcon"></div>
+      <div class="name">missing_them.exe</div>
+      <button class="win-btn" id="missingClose" aria-label="close">X</button>
+    </div>
+    <div class="popup-body">
+      <p class="popup-name" id="missingTitle">for when you are missing ur friends</p>
+      <p class="popup-byline">an excerpt from Olivia Liang:</p>
+      <div class="popup-note" id="missingNote"></div>
+    </div>
+  </div>
+</div>
+
+<script src="land-data.js"></script>
+<script>
+(function(){
+  // ---------- tiny pixel-icon system (grid strings -> a real <svg> with <rect> children) ----------
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  function buildPixelIcon(rows, color){
+    var cols = rows[0].length;
+    var svg = document.createElementNS(SVGNS,'svg');
+    svg.setAttribute('viewBox','0 0 '+cols+' '+rows.length);
+    svg.setAttribute('width','100%'); svg.setAttribute('height','100%');
+    svg.style.fill = color || 'currentColor';
+    for(var r=0;r<rows.length;r++){
+      for(var c=0;c<cols;c++){
+        if(rows[r][c]==='1'){
+          var rect = document.createElementNS(SVGNS,'rect');
+          rect.setAttribute('x',c); rect.setAttribute('y',r);
+          rect.setAttribute('width',1); rect.setAttribute('height',1);
+          rect.setAttribute('shape-rendering','crispEdges');
+          svg.appendChild(rect);
+        }
+      }
+    }
+    return svg;
+  }
+  function setPixelIcon(container, rows, color){
+    container.innerHTML = '';
+    container.appendChild(buildPixelIcon(rows, color));
+  }
+
+  var ICONS = {
+    magnifier:["00111000","01000100","10000010","10000010","01000101","00111010","00000101","00000010"],
+    moon:     ["00111000","01100000","11000000","11000000","11000000","01100000","00111000","00000000"],
+    heart8:   ["01100110","11111111","11111111","11111111","01111110","00111100","00011000","00000000"],
+    star:     ["00011000","00011000","00111100","11111111","01111110","00111100","01100110","11000011"],
+    monitor:  ["11111111","10000001","10111101","10111101","10000001","11111111","00011000","00111100"],
+    smiley:   ["01111110","10000001","10100101","10000001","10100101","10011001","10000001","01111110"]
+  };
+
+  setPixelIcon(document.getElementById('titleIcon'), ICONS.monitor, getCss2('--titlebar-dark'));
+  setPixelIcon(document.getElementById('searchIcon'), ICONS.magnifier);
+  setPixelIcon(document.getElementById('btnNight'), ICONS.moon);
+  setPixelIcon(document.getElementById('btnTour'), ICONS.star);
+  setPixelIcon(document.getElementById('btnSurprise'), ICONS.heart8);
+  setPixelIcon(document.getElementById('avatarIcon'), ICONS.smiley, getCss2('--white'));
+  setPixelIcon(document.getElementById('popupIcon'), ICONS.heart8, getCss2('--titlebar-dark'));
+  function getCss2(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+  // ---------- edit this list with your real friends ----------
+  var FACES = ["(๑>◡<๑)","ヽ(・∀・)ﾉ","(￣▽￣)ノ","( ˘ ³˘)♥","ヾ(＾-＾)ノ","(≧◡≦)","(っ˘ω˘ς )","(◕‿◕✿)","(＾• ω •＾)","ദ്ദി(˵ •̀ ᴗ - ˵ )","(๑˃ᴗ˂)ﻭ","٩(◕‿◕)۶","(*^ω^*)","ヾ(•ω•`)o","(っ- ‸ - ς)"];
+  var friends = [
+    { name:"August",   city:"Stockholm",     country:"Sweden",  lat:59.33, lon:18.07 },
+    { name:"Lucrezia", city:"Paris",         country:"France",  lat:48.85, lon:2.35, note:"Hot Italian Lady attempting 2 survive in Paris and find a job. Ccurrently consulting on how 2 save Syria #bless" },
+    { name:"Tal",      city:"Paris",         country:"France",  lat:48.85, lon:2.35, note:"nominally employed for vice, economically not vibing" },
+    { name:"Victoria", city:"Washington DC", country:"USA",     lat:38.91, lon:-77.04, note:"intern at Centre for New American Security (\"they're not right wing, but like, their biggest donors are like Amazon and stuff\"). Doing cool stuff, security research, big reports" },
+    { name:"Oscar",    city:"Paris",         country:"France",  lat:48.85, lon:2.35, note:"Accepted to Australia's diplomat program. undergoing security clearance :( do not send him spicy terrorism memes. Living unemployed life with work on the horizon, crazy" },
+    { name:"William",  city:"Oslo",          country:"Norway",  lat:59.91, lon:10.75, note:"working for the International Chamber of Commerce on the most niche subjects you've never heard of" },
+    { name:"Eric",     city:"Copenhagen",    country:"Denmark", lat:55.68, lon:12.57, note:"making big boy money in copenhagen, would love a dog named Otto" },
+    { name:"Heidi",    city:"Berlin",        country:"Germany", lat:52.52, lon:13.40 },
+    { name:"Alberto",  city:"Bonn",          country:"Germany", lat:50.74, lon:7.10, note:"decided to move to Bonn, for some reason, everyone go visit him or he'll die of boredom" },
+    { name:"Iason",    city:"Berlin",        country:"Germany", lat:52.52, lon:13.40, note:"im sorry guys it's really hard to keep up with everyone, hi Iason what's been up with u" },
+    { name:"David",    city:"Hamburg",       country:"Germany", lat:53.55, lon:9.99, note:"In Hamburg, I think. Honestly not sure, what's up David, whatcha up to" },
+    { name:"Bianca",   city:"Rome",          country:"Italy",   lat:41.90, lon:12.50 },
+    { name:"Clara",    city:"Paris",         country:"France",  lat:48.85, lon:2.35, note:"The New Queen of Parmentier, long live the holy house. Getting internship offers left and right" },
+    { name:"Chiara",   city:"Paris",         country:"France",  lat:48.85, lon:2.35, note:"writing thesis in Paris, newly back from Jordan, smartest girl around mashallah" },
+    { name:"Anton",    city:"Helsinki",      country:"Finland", lat:60.17, lon:24.94, note:"no clue, i think in the Stans somewhere?" },
+    { name:"Nina",     city:"Krakow",        country:"Poland",  lat:50.06, lon:19.94, note:"Lost in central asia, last seen happy on a horse. No need to send help" },
+    { name:"Domi",     city:"Leeds",         country:"UK",      lat:53.80, lon:-1.55, note:"becoming a millionaire entrepreneur in Leeds?? likely the first to go when we start eating the rich" },
+    { name:"Edo",      city:"Bergamo",       country:"Italy",   lat:45.70, lon:9.67, note:"being underpaid in Bergamo, we pray for his swift return to Paris (or maybe even some fieldwork soon)" },
+    { name:"Philip",   city:"Brussels",      country:"Belgium", lat:50.85, lon:4.35, note:"completing a sick EU traineeship but not decisively psyched about it" },
+    { name:"Anni",     city:"Bilbao",        country:"Spain",   lat:43.26, lon:-2.93, note:"somewhere north of spain while looking for jobs, smartest of the group, clearly" }
+  ];
+  friends.forEach(function(f,i){ f.face = FACES[i % FACES.length]; f._idx = i; });
+  var PLACEHOLDER_NOTE = "little info";
+
+  // group friends into one pin per city
+  var clusters = [];
+  (function(){
+    var byCity = {};
+    friends.forEach(function(f){
+      var key = f.city+'|'+f.country;
+      if(!byCity[key]){
+        byCity[key] = { city:f.city, country:f.country, lat:f.lat, lon:f.lon, members:[] };
+        clusters.push(byCity[key]);
+      }
+      byCity[key].members.push(f);
+    });
+    clusters.forEach(function(c){
+      var n = c.members.length;
+      if(n<2) return;
+      var radius = 20 + n*4.6;
+      c.members.forEach(function(f,k){
+        var angle = (Math.PI*2*k/n) - Math.PI/2;
+        f._fanDx = Math.cos(angle)*radius;
+        f._fanDy = Math.sin(angle)*radius;
+      });
+    });
+  })();
+
+  // ---------- real coastline data (Natural Earth 110m, via world-atlas), rasterized live ----------
+  var W = 1000, H = 500;
+  var GRID_COLS = 360, GRID_ROWS = 180;
+
+  // flatten every ring (exterior + holes, across all polygons) into edges once.
+  // even-odd parity across ALL rings combined correctly handles holes without
+  // needing per-polygon containment tests — and lets rasterization run as a
+  // per-row scanline instead of a per-cell polygon test (much faster to redraw
+  // while panning/zooming).
+  var EDGES = [];
+  (window.LAND_POLYGONS||[]).forEach(function(rings){
+    rings.forEach(function(flat){
+      var n = flat.length/2;
+      for(var i=0,j=n-1;i<n;j=i++){
+        var x1=flat[j*2], y1=flat[j*2+1], x2=flat[i*2], y2=flat[i*2+1];
+        // the source data is pre-unwrapped so rings crossing the antimeridian
+        // stay topologically closed (see build script) — this only catches a
+        // residual ring-closing edge touching the seam (e.g. Antarctica).
+        // Snapping both ends to the same boundary makes it a harmless
+        // zero-width edge instead of a spurious ~360°-wide bridge.
+        if(Math.abs(x2-x1) > 180){ var snap = x1<0?-180:180; x1=snap; x2=snap; }
+        EDGES.push(x1, y1, x2, y2);
+      }
+    });
+  });
+  function scanlineIntersections(lat, out){
+    out.length = 0;
+    for(var e=0; e<EDGES.length; e+=4){
+      var y1=EDGES[e+1], y2=EDGES[e+3];
+      if((y1>lat) === (y2>lat)) continue;
+      var x1=EDGES[e], x2=EDGES[e+2];
+      out.push(x1 + (lat-y1)/(y2-y1)*(x2-x1));
+    }
+    out.sort(function(a,b){ return a-b; });
+    return out;
+  }
+
+  // ---------- projection: a fisheye-style warp that inflates Europe, plus gradual zoom ----------
+  // "warped space" is our map's real coordinate system: 0..1000 (x) by 0..500 (y),
+  // exactly matching the SVG viewBox. Real lon/lat run through a piecewise-linear
+  // warp on the way in, so Europe occupies a disproportionately large share of
+  // that space — the rest of the world compresses to fill what's left. Zoom/pan/
+  // scrollbars all operate in this warped space; only the map rasterizer needs to
+  // convert back to real lon/lat (via unwarp) to test coastlines.
+  var LON_MIN=-180, LON_MAX=180, LAT_MIN=-58, LAT_MAX=78; // crop empty poles; keep enough margin above EUROPE_LAT_MAX that the compressed sliver isn't thinner than our grid resolution (too-thin caused a seam artifact)
+  var EUROPE_LON_MIN=-12, EUROPE_LON_MAX=32, EUROPE_LAT_MIN=36, EUROPE_LAT_MAX=71; // stretch north past Scandinavia so the boost doesn't cut through it
+  // Europe's real box is ~44° lon by 35° lat (~1.26:1), but the canvas itself
+  // is 2:1 — giving both axes the same boost fraction stretched it wide to
+  // fill that mismatched shape. Split the fraction per axis so the boosted
+  // box keeps roughly its true proportions instead.
+  var EUROPE_FRAC_LON = 0.24;
+  var EUROPE_FRAC_LAT = 0.38;
+
+  // A hard piecewise-linear warp has a sharp corner where the compressed
+  // zone meets the boosted zone — the scale changes instantly there, which
+  // compresses a wide swath of real coastline into a couple of pixel rows
+  // and reads as a flat seam. This builds the same 3-zone shape but as a
+  // smooth (C1-continuous) Hermite curve, so the rate of compression eases
+  // in/out instead of kinking — no single row absorbs a disproportionate
+  // amount of geography. Exact placement at domainMin/featMin/featMax/
+  // domainMax is preserved (the curve still passes through those points).
+  function makeAxisWarp(domainMin, domainMax, featMin, featMax, featFrac, total){
+    var leftReal = featMin-domainMin, rightReal = domainMax-featMax, midReal = featMax-featMin;
+    var midW = featFrac*total, remainW = total-midW;
+    var sideReal = leftReal+rightReal;
+    var leftW = sideReal>0 ? remainW*(leftReal/sideReal) : 0;
+    var rightW = remainW-leftW;
+
+    var kW = [0, leftW, leftW+midW, total];
+    var kX = [domainMin, featMin, featMax, domainMax];
+    var s0 = leftW>0 ? leftReal/leftW : 0;   // real-per-warped-unit, each segment
+    var s1 = midW>0 ? midReal/midW : 0;
+    var s2 = rightW>0 ? rightReal/rightW : 0;
+    var m = [s0, (s0+s1)/2, (s1+s2)/2, s2]; // tangent at each knot (endpoints keep their own segment's rate)
+
+    function hermite(i, w, wantDeriv){
+      var w0=kW[i], w1=kW[i+1], x0=kX[i], x1=kX[i+1], m0=m[i], m1=m[i+1];
+      var dw = w1-w0;
+      if(dw<=0) return wantDeriv ? 0 : x0;
+      var t=(w-w0)/dw, t2=t*t, t3=t2*t;
+      if(wantDeriv){
+        var dh00=6*t2-6*t, dh10=3*t2-4*t+1, dh01=-6*t2+6*t, dh11=3*t2-2*t;
+        return (dh00*x0 + dh10*dw*m0 + dh01*x1 + dh11*dw*m1)/dw;
+      }
+      var h00=2*t3-3*t2+1, h10=t3-2*t2+t, h01=-2*t3+3*t2, h11=t3-t2;
+      return h00*x0 + h10*dw*m0 + h01*x1 + h11*dw*m1;
+    }
+    function unwarp(w){
+      w = Math.min(total, Math.max(0, w));
+      var i = w<=kW[1] ? 0 : (w<=kW[2] ? 1 : 2);
+      return hermite(i, w, false);
+    }
+    function warp(x){
+      x = Math.min(domainMax, Math.max(domainMin, x));
+      var i = x<=featMin ? 0 : (x<=featMax ? 1 : 2);
+      var w0=kW[i], w1=kW[i+1], x0=kX[i], x1=kX[i+1];
+      var w = x1===x0 ? w0 : w0 + (x-x0)/(x1-x0)*(w1-w0); // linear seed, then refine
+      for(var it=0; it<8; it++){
+        var f = hermite(i, w, false) - x;
+        var df = hermite(i, w, true);
+        if(Math.abs(df) < 1e-9) break;
+        w = Math.min(w1, Math.max(w0, w - f/df));
+      }
+      return w;
+    }
+    return { warp:warp, unwarp:unwarp, boxMin:leftW, boxMax:leftW+midW };
+  }
+  var LON_AXIS = makeAxisWarp(LON_MIN, LON_MAX, EUROPE_LON_MIN, EUROPE_LON_MAX, EUROPE_FRAC_LON, 1000);
+  var LAT_AXIS = makeAxisWarp(LAT_MIN, LAT_MAX, EUROPE_LAT_MIN, EUROPE_LAT_MAX, EUROPE_FRAC_LAT, 500);
+  function warpLon(lon){ return LON_AXIS.warp(lon); }
+  function unwarpLon(w){ return LON_AXIS.unwarp(w); }
+  function warpLat(lat){ return 500-LAT_AXIS.warp(lat); } // flip: north=top=y0
+  function unwarpLat(w){ return LAT_AXIS.unwarp(500-w); }
+
+  var MIN_SPAN = 100, MAX_SPAN = 1000; // warped-lon-units visible; height follows at MAX_SPAN's aspect
+  var EUROPE_WX = (LON_AXIS.boxMin+LON_AXIS.boxMax)/2;
+  var EUROPE_WY = 500-(LAT_AXIS.boxMin+LAT_AXIS.boxMax)/2;
+  var EUROPE_BOX_W = LON_AXIS.boxMax-LON_AXIS.boxMin, EUROPE_BOX_H = LAT_AXIS.boxMax-LAT_AXIS.boxMin;
+  // the view is always forced to the canvas's 2:1 aspect, so pick whichever
+  // box dimension needs the larger span to fit with padding (view height = span/2)
+  var EUROPE_SPAN = Math.min(MAX_SPAN, Math.max(EUROPE_BOX_W, EUROPE_BOX_H*2) * 1.12);
+
+  var curSpan = MAX_SPAN;
+  var focus = { wx:500, wy:250 }; // warped-space center of the current view
+  var view = { lonMin:0, lonMax:1000, latMin:0, latMax:500 };
+
+  function computeView(){
+    var hx = curSpan/2, hy = (curSpan*0.5)/2;
+    return { lonMin:focus.wx-hx, lonMax:focus.wx+hx, latMin:focus.wy-hy, latMax:focus.wy+hy };
+  }
+  function clampFocus(){
+    var hx = curSpan/2, hy = (curSpan*0.5)/2;
+    var lonLo=hx, lonHi=1000-hx, latLo=hy, latHi=500-hy;
+    focus.wx = lonLo>lonHi ? 500 : Math.min(lonHi, Math.max(lonLo, focus.wx));
+    focus.wy = latLo>latHi ? 250 : Math.min(latHi, Math.max(latLo, focus.wy));
+  }
+  function setFocusLL(lat, lon){ focus.wx = warpLon(lon); focus.wy = warpLat(lat); }
+  function project(lat, lon){
+    var wx = warpLon(lon), wy = warpLat(lat);
+    return {
+      x: (wx-view.lonMin)/(view.lonMax-view.lonMin)*W,
+      y: (wy-view.latMin)/(view.latMax-view.latMin)*H
+    };
+  }
+  function inView(lat,lon){
+    var wx = warpLon(lon), wy = warpLat(lat);
+    return wx>=view.lonMin && wx<=view.lonMax && wy>=view.latMin && wy<=view.latMax;
+  }
+  function scaleForSpan(span){
+    var t = 1 - (span-MIN_SPAN)/(MAX_SPAN-MIN_SPAN);
+    t = Math.min(1, Math.max(0, t));
+    return 1 + t*1.1; // up to ~2.1x at closest zoom
+  }
+
+  var mapCanvas = document.getElementById('mapCanvas');
+  mapCanvas.width = GRID_COLS; mapCanvas.height = GRID_ROWS;
+  var ctx = mapCanvas.getContext('2d');
+  function hexToRgb(hex){
+    hex = hex.replace('#','');
+    if(hex.length===3){ hex = hex.split('').map(function(c){return c+c;}).join(''); }
+    var n = parseInt(hex,16);
+    return [(n>>16)&255,(n>>8)&255,n&255];
+  }
+  function getCss(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+  var DAY = { land:getCss('--land'), ocean:getCss('--ocean') };
+  var NIGHT = { land:'#1f9e3a', ocean:'#0e1a3d' };
+  var nightOn = false;
+
+  var __xs = [];
+  function renderMapForView(){
+    var cols = GRID_COLS, rows = GRID_ROWS;
+    var pal = nightOn ? NIGHT : DAY;
+    var land = hexToRgb(pal.land), ocean = hexToRgb(pal.ocean);
+    var out = ctx.createImageData(cols, rows);
+    var lonW = view.lonMax-view.lonMin, latH = view.latMax-view.latMin;
+    var p = 0;
+    for(var j=0;j<rows;j++){
+      var wy = view.latMin + (j+0.5)/rows*latH;
+      var realLat = unwarpLat(wy);
+      var xs = scanlineIntersections(realLat, __xs); // sorted real-lon crossings for this row
+      var idx = 0, inside = false;
+      for(var i=0;i<cols;i++){
+        var wx = view.lonMin + (i+0.5)/cols*lonW;
+        var realLon = unwarpLon(wx); // monotonic in i, so the left-to-right merge below still holds
+        while(idx<xs.length && xs[idx]<=realLon){ idx++; inside=!inside; }
+        var c = inside ? land : ocean;
+        out.data[p]=c[0]; out.data[p+1]=c[1]; out.data[p+2]=c[2]; out.data[p+3]=255;
+        p+=4;
+      }
+    }
+    ctx.putImageData(out,0,0);
+  }
+
+  function isPannable(){ return curSpan < MAX_SPAN-0.5; }
+
+  function refreshView(){
+    view = computeView();
+    renderMapForView();
+    repositionAll();
+    updateScrollbarThumbs();
+    document.documentElement.style.setProperty('--zs', scaleForSpan(curSpan));
+    document.getElementById('sbV').classList.toggle('inert', !isPannable());
+    document.getElementById('sbH').classList.toggle('inert', !isPannable());
+  }
+
+  function setZoomSpan(span){
+    curSpan = Math.min(MAX_SPAN, Math.max(MIN_SPAN, span));
+    clampFocus();
+    refreshView();
+  }
+  function flyTo(span, wx, wy){
+    curSpan = Math.min(MAX_SPAN, Math.max(MIN_SPAN, span));
+    focus.wx = wx; focus.wy = wy;
+    clampFocus();
+    refreshView();
+  }
+
+  function panBy(dwx, dwy){
+    if(!isPannable()) return;
+    focus.wx += dwx; focus.wy += dwy;
+    clampFocus();
+    refreshView();
+  }
+
+  function updateScrollbarThumbs(){
+    var thumbV = document.getElementById('sbThumbV'), thumbH = document.getElementById('sbThumbH');
+    if(!isPannable()){
+      thumbV.style.top='0%'; thumbV.style.height='100%';
+      thumbH.style.left='0%'; thumbH.style.width='100%';
+      return;
+    }
+    var vSpan = view.latMax-view.latMin, hSpan = view.lonMax-view.lonMin;
+    var vFrac = Math.min(1, vSpan/500), hFrac = Math.min(1, hSpan/1000);
+    var vScroll = 500-vSpan, hScroll = 1000-hSpan;
+    var vPos = vScroll>0 ? view.latMin/vScroll : 0;
+    var hPos = hScroll>0 ? view.lonMin/hScroll : 0;
+    thumbV.style.height = (vFrac*100)+'%';
+    thumbV.style.top = (vPos*(1-vFrac)*100)+'%';
+    thumbH.style.width = (hFrac*100)+'%';
+    thumbH.style.left = (hPos*(1-hFrac)*100)+'%';
+  }
+
+  var grat = document.getElementById('graticule');
+  for(var gx=0; gx<=1000; gx+=100){
+    var l = document.createElementNS('http://www.w3.org/2000/svg','line');
+    l.setAttribute('x1',gx); l.setAttribute('y1',0); l.setAttribute('x2',gx); l.setAttribute('y2',500);
+    grat.appendChild(l);
+  }
+  for(var gy=0; gy<=500; gy+=62.5){
+    var l2 = document.createElementNS('http://www.w3.org/2000/svg','line');
+    l2.setAttribute('x1',0); l2.setAttribute('y1',gy); l2.setAttribute('x2',1000); l2.setAttribute('y2',gy);
+    grat.appendChild(l2);
+  }
+
+  // pixel heart (7x6 grid) as a reusable path built from unit squares
+  var HEART_GRID = ["0110110","1111111","1111111","0111110","0011100","0001000"];
+  function heartRects(unit){
+    var rows = HEART_GRID.length, cols = HEART_GRID[0].length;
+    var w = cols*unit, h = rows*unit, ox = -w/2, oy = -h/2, s = '';
+    for(var r=0;r<rows;r++){
+      for(var c=0;c<cols;c++){
+        if(HEART_GRID[r][c]==='1'){
+          s += '<rect x="'+(ox+c*unit)+'" y="'+(oy+r*unit)+'" width="'+unit+'" height="'+unit+'"/>';
+        }
+      }
+    }
+    return s;
+  }
+  var svgNS = 'http://www.w3.org/2000/svg';
+  function el(tag, cls){ var e = document.createElementNS(svgNS, tag); if(cls) e.setAttribute('class',cls); return e; }
+  function makeHeart(unit){
+    var g = el('g','pin-heart');
+    g.innerHTML = heartRects(unit);
+    return g;
+  }
+  function makeHitArea(r){
+    var c = el('circle','pin-hit');
+    c.setAttribute('r', r);
+    c.setAttribute('fill', 'transparent');
+    c.setAttribute('pointer-events', 'all');
+    return c;
+  }
+
+  var pinsGroup = document.getElementById('pins');
+  var tourLine = document.getElementById('tourLine');
+
+  var hoverLabelLayer = el('g','hover-label-layer');
+  var hoverLabelText = el('text','hover-label-text');
+  hoverLabelLayer.appendChild(hoverLabelText);
+  function showHoverLabel(x, y, text){
+    hoverLabelText.setAttribute('x', x+11);
+    hoverLabelText.setAttribute('y', y-8);
+    hoverLabelText.textContent = text;
+    hoverLabelText.style.opacity = '1';
+  }
+  function hideHoverLabel(){ hoverLabelText.style.opacity = '0'; }
+
+  clusters.forEach(function(c){
+    var cg = el('g','cluster');
+
+    var base = el('g','pin');
+    base.setAttribute('tabindex','0');
+    base.setAttribute('role','button');
+    base.setAttribute('aria-label', c.members.length>1 ? (c.city+', '+c.members.length+' friends') : (c.members[0].name+', '+c.city+', '+c.country));
+    var baseVisual = el('g','pin-visual');
+    baseVisual.appendChild(makeHitArea(16));
+    baseVisual.appendChild(makeHeart(3));
+    base.appendChild(baseVisual);
+    var baseLabel = el('text','pin-label');
+    baseLabel.setAttribute('x', 12); baseLabel.setAttribute('y', -8);
+    baseLabel.textContent = c.members.length>1 ? (c.city+' · '+c.members.length+' friends') : (c.members[0].name+' · '+c.city);
+    base.appendChild(baseLabel);
+    if(c.members.length>1){
+      var badge = el('text','badge');
+      badge.setAttribute('x', 0); badge.setAttribute('y', -11);
+      badge.setAttribute('text-anchor','middle');
+      badge.textContent = '×'+c.members.length;
+      base.appendChild(badge);
+    }
+    cg.appendChild(base);
+
+    var namesGroup = el('g','cluster-names');
+    if(c.members.length>1){
+      var nr = 22 + c.members.length*5;
+      c.members.forEach(function(f,k){
+        var angle = (Math.PI*2*k/c.members.length) - Math.PI/2;
+        var cos = Math.cos(angle), sin = Math.sin(angle);
+        var t = el('text');
+        t.setAttribute('x', cos*nr);
+        t.setAttribute('y', sin*nr + 4);
+        t.setAttribute('text-anchor', cos>0.3 ? 'start' : (cos<-0.3 ? 'end' : 'middle'));
+        t.textContent = f.name;
+        namesGroup.appendChild(t);
+      });
+    }
+    cg.appendChild(namesGroup);
+
+    var fan = el('g','fan');
+    if(c.members.length>1){
+      c.members.forEach(function(f){
+        var mg = el('g','pin member');
+        mg.setAttribute('tabindex','0');
+        mg.setAttribute('role','button');
+        mg.setAttribute('aria-label', f.name+', '+f.city+', '+f.country);
+        mg.setAttribute('transform','translate('+f._fanDx+','+f._fanDy+')');
+        var mgVisual = el('g','pin-visual');
+        mgVisual.appendChild(makeHitArea(12));
+        mgVisual.appendChild(makeHeart(2.4));
+        mg.appendChild(mgVisual);
+        var ml = el('text','pin-label');
+        ml.setAttribute('x', 9); ml.setAttribute('y', -7);
+        ml.textContent = f.name;
+        mg.appendChild(ml);
+        mg.addEventListener('click', function(e){ e.stopPropagation(); setFocusLL(f.lat,f.lon); openPopup(f._idx); });
+        mg.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); e.stopPropagation(); setFocusLL(f.lat,f.lon); openPopup(f._idx); } });
+        mg.addEventListener('pointerenter', function(e){ e.stopPropagation(); var p = project(c.lat,c.lon); showHoverLabel(p.x+f._fanDx, p.y+f._fanDy, f.name); });
+        mg.addEventListener('pointerleave', function(e){ e.stopPropagation(); hideHoverLabel(); });
+        mg.addEventListener('focusin', function(e){ e.stopPropagation(); var p = project(c.lat,c.lon); showHoverLabel(p.x+f._fanDx, p.y+f._fanDy, f.name); });
+        mg.addEventListener('focusout', function(e){ e.stopPropagation(); hideHoverLabel(); });
+        fan.appendChild(mg);
+      });
+    }
+    cg.appendChild(fan);
+
+    function onActivate(){
+      setFocusLL(c.lat, c.lon);
+      if(c.members.length===1){ openPopup(c.members[0]._idx); }
+      else{ cg.classList.toggle('expanded'); }
+    }
+    base.addEventListener('click', onActivate);
+    base.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); onActivate(); } });
+    base.addEventListener('pointerenter', function(){ var p = project(c.lat,c.lon); showHoverLabel(p.x, p.y, baseLabel.textContent); });
+    base.addEventListener('pointerleave', hideHoverLabel);
+    base.addEventListener('focusin', function(){ var p = project(c.lat,c.lon); showHoverLabel(p.x, p.y, baseLabel.textContent); });
+    base.addEventListener('focusout', hideHoverLabel);
+
+    pinsGroup.appendChild(cg);
+    c._el = cg; c._base = base;
+  });
+  pinsGroup.appendChild(hoverLabelLayer);
+
+  function repositionAll(){
+    var tourPts = [];
+    clusters.forEach(function(c){
+      var pos = project(c.lat, c.lon);
+      c._el.setAttribute('transform','translate('+pos.x+','+pos.y+')');
+      c._el.classList.toggle('offscreen', !inView(c.lat,c.lon));
+      if(inView(c.lat,c.lon)) tourPts.push(pos.x+','+pos.y);
+    });
+    tourLine.setAttribute('points', tourPts.join(' '));
+  }
+  refreshView();
+
+  document.getElementById('countPals').textContent = friends.length;
+  document.getElementById('countCountries').textContent = new Set(friends.map(function(f){return f.country;})).size;
+  document.getElementById('statusDate').textContent = new Date().toISOString().slice(0,10);
+
+  // ---------- popup (with a little hourglass delay for flavor) ----------
+  var backdrop = document.getElementById('backdrop');
+  function openPopup(i){
+    document.body.style.cursor = 'wait';
+    setTimeout(function(){
+      document.body.style.cursor = '';
+      var f = friends[i];
+      document.getElementById('popupTitle').textContent = f.name.toLowerCase()+'.exe';
+      document.getElementById('popupFace').textContent = f.face;
+      document.getElementById('popupName').textContent = f.name;
+      document.getElementById('popupCity').textContent = f.city;
+      document.getElementById('popupCountry').textContent = f.country;
+      document.getElementById('popupNote').textContent = f.note || PLACEHOLDER_NOTE;
+      backdrop.hidden = false;
+      document.getElementById('popupClose').focus();
+    }, 260);
+  }
+  function closePopup(){ backdrop.hidden = true; }
+  document.getElementById('popupClose').addEventListener('click', closePopup);
+  backdrop.addEventListener('click', function(e){ if(e.target===backdrop) closePopup(); });
+  document.addEventListener('keydown', function(e){
+    if(e.key!=='Escape') return;
+    if(!backdrop.hidden) closePopup();
+    if(!missingBackdrop.hidden) closeMissing();
+  });
+
+  // ---------- window chrome ----------
+  var win = document.getElementById('win');
+  document.getElementById('btnMin').addEventListener('click', function(){
+    win.classList.toggle('collapsed');
+  });
+  document.getElementById('btnClose').addEventListener('click', function(){
+    win.classList.add('closed');
+  });
+  document.getElementById('btnReopen').addEventListener('click', function(){
+    win.classList.remove('closed');
+  });
+
+  // ---------- menu bar ----------
+  var menus = [
+    {btn:'menuFileBtn', drop:'menuFile'},
+    {btn:'menuEditBtn', drop:'menuEdit'},
+    {btn:'menuViewBtn', drop:'menuView'},
+    {btn:'menuHelpBtn', drop:'menuHelp'}
+  ];
+  function closeAllMenus(){
+    menus.forEach(function(m){
+      document.getElementById(m.drop).hidden = true;
+      document.getElementById(m.btn).setAttribute('aria-expanded','false');
+    });
+  }
+  menus.forEach(function(m){
+    var btn = document.getElementById(m.btn), drop = document.getElementById(m.drop);
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var open = !drop.hidden;
+      closeAllMenus();
+      if(!open){ drop.hidden = false; btn.setAttribute('aria-expanded','true'); }
+    });
+  });
+  document.addEventListener('click', closeAllMenus);
+
+  document.getElementById('actRandom').addEventListener('click', function(){ closeAllMenus(); surprise(); });
+  document.getElementById('actClearSearch').addEventListener('click', function(){ closeAllMenus(); document.getElementById('search').value=''; applySearch(); });
+  document.getElementById('actToggleGrid').addEventListener('click', function(){ closeAllMenus(); toggleGrid(); });
+  document.getElementById('actToggleNight').addEventListener('click', function(){ closeAllMenus(); toggleNight(); });
+  document.getElementById('actToggleTour').addEventListener('click', function(){ closeAllMenus(); toggleTour(); });
+  document.getElementById('actNewFriend').addEventListener('click', function(){ closeAllMenus(); alert('Add yourself to the `friends` array near the top of the script: name, city, country, lat, lon, face.'); });
+  document.getElementById('actAbout').addEventListener('click', function(){ closeAllMenus(); openMissing(); });
+
+  // ---------- "missing your friends" popup ----------
+  setPixelIcon(document.getElementById('missingIcon'), ICONS.heart8, getCss2('--titlebar-dark'));
+  document.getElementById('missingNote').textContent = "Last night, I ate dinner with my friend Jenny. In real life, on a warm London evening, forking up aubergine from the same plate. We laughed, shared family news, told each other the things we’d been worrying over. At home, alone in my study, they’d felt insurmountable, a sign that something was irredeemably wrong with me. Under the gentle scrutiny of my friend, they diminished to a normal size: just the grit of everyday traffic with other humans. I walked home feeling buoyant, nearly invincible. I need my friends. I bet you need yours.";
+  var missingBackdrop = document.getElementById('missingBackdrop');
+  function openMissing(){ missingBackdrop.hidden = false; document.getElementById('missingClose').focus(); }
+  function closeMissing(){ missingBackdrop.hidden = true; }
+  document.getElementById('missingClose').addEventListener('click', closeMissing);
+  missingBackdrop.addEventListener('click', function(e){ if(e.target===missingBackdrop) closeMissing(); });
+
+  // ---------- toolbar ----------
+  var gridOn=false, tourOn=false;
+  function toggleGrid(){
+    gridOn=!gridOn;
+    document.getElementById('graticule').classList.toggle('on', gridOn);
+  }
+  function toggleNight(){
+    nightOn=!nightOn;
+    renderMapForView();
+    document.getElementById('btnNight').setAttribute('aria-pressed', nightOn);
+  }
+  function toggleTour(){
+    tourOn=!tourOn;
+    document.getElementById('tourLine').classList.toggle('on', tourOn);
+    document.getElementById('btnTour').setAttribute('aria-pressed', tourOn);
+  }
+  function surprise(){
+    var c = clusters[Math.floor(Math.random()*clusters.length)];
+    var f = c.members[Math.floor(Math.random()*c.members.length)];
+    setFocusLL(f.lat, f.lon);
+    if(c.members.length>1) c._el.classList.add('expanded');
+    openPopup(f._idx);
+  }
+
+  document.getElementById('chkLabels').addEventListener('change', function(e){
+    document.body.classList.toggle('show-all-names', e.target.checked);
+  });
+  document.getElementById('btnNight').addEventListener('click', toggleNight);
+  document.getElementById('btnTour').addEventListener('click', toggleTour);
+  document.getElementById('btnSurprise').addEventListener('click', surprise);
+  document.getElementById('btnWorld').addEventListener('click', function(){ flyTo(MAX_SPAN, 500, 250); });
+  document.getElementById('btnEurope').addEventListener('click', function(){ flyTo(EUROPE_SPAN, EUROPE_WX, EUROPE_WY); });
+  document.getElementById('btnZoomIn').addEventListener('click', function(){ setZoomSpan(curSpan*0.72); });
+  document.getElementById('btnZoomOut').addEventListener('click', function(){ setZoomSpan(curSpan/0.72); });
+
+  // ---------- gradual zoom: mouse wheel over the map, centered on the cursor ----------
+  var mapViewportEl = document.getElementById('mapViewport');
+  var wheelRaf = null;
+  mapViewportEl.addEventListener('wheel', function(e){
+    e.preventDefault();
+    var rect = mapViewportEl.getBoundingClientRect();
+    var px = (e.clientX-rect.left)/rect.width, py = (e.clientY-rect.top)/rect.height;
+    var cursorWx = view.lonMin + px*(view.lonMax-view.lonMin);
+    var cursorWy = view.latMin + py*(view.latMax-view.latMin);
+    var factor = Math.pow(1.0016, e.deltaY);
+    var newSpan = Math.min(MAX_SPAN, Math.max(MIN_SPAN, curSpan*factor));
+    // keep the point under the cursor fixed while the span changes
+    focus.wx = cursorWx + (focus.wx-cursorWx) * (newSpan/curSpan);
+    focus.wy = cursorWy + (focus.wy-cursorWy) * (newSpan/curSpan);
+    curSpan = newSpan;
+    clampFocus();
+    if(wheelRaf) return;
+    wheelRaf = requestAnimationFrame(function(){ wheelRaf=null; refreshView(); });
+  }, { passive:false });
+
+  // ---------- functional scrollbars: pan whenever zoomed in past the world view ----------
+  function stepFor(){ return isPannable() ? curSpan*0.25 : 0; }
+  document.getElementById('sbUp').addEventListener('click', function(){ panBy(0, -stepFor()*0.5); });
+  document.getElementById('sbDown').addEventListener('click', function(){ panBy(0, stepFor()*0.5); });
+  document.getElementById('sbLeft').addEventListener('click', function(){ panBy(-stepFor(), 0); });
+  document.getElementById('sbRight').addEventListener('click', function(){ panBy(stepFor(), 0); });
+
+  function trackClick(e, track, axis){
+    if(!isPannable()) return;
+    var rect = track.getBoundingClientRect();
+    if(axis==='v'){
+      var frac = (e.clientY-rect.top)/rect.height;
+      var targetWy = frac*500;
+      panBy(0, targetWy>focus.wy ? curSpan*0.35 : -curSpan*0.35);
+    } else {
+      var fracX = (e.clientX-rect.left)/rect.width;
+      var targetWx = fracX*1000;
+      panBy(targetWx>focus.wx ? curSpan*0.35 : -curSpan*0.35, 0);
+    }
+  }
+  document.getElementById('sbTrackV').addEventListener('click', function(e){
+    if(e.target.id==='sbThumbV') return;
+    trackClick(e, document.getElementById('sbTrackV'), 'v');
+  });
+  document.getElementById('sbTrackH').addEventListener('click', function(e){
+    if(e.target.id==='sbThumbH') return;
+    trackClick(e, document.getElementById('sbTrackH'), 'h');
+  });
+
+  function dragThumb(thumbEl, trackEl, axis){
+    thumbEl.addEventListener('pointerdown', function(e){
+      if(!isPannable()) return;
+      e.preventDefault();
+      thumbEl.setPointerCapture(e.pointerId);
+      var trackRect = trackEl.getBoundingClientRect();
+      var startX = e.clientX, startY = e.clientY;
+      var startFocus = { wx:focus.wx, wy:focus.wy };
+      var raf = null;
+      function onMove(ev){
+        if(axis==='v'){
+          var dy = ev.clientY-startY;
+          focus.wy = startFocus.wy + (dy/trackRect.height)*500;
+        } else {
+          var dx = ev.clientX-startX;
+          focus.wx = startFocus.wx + (dx/trackRect.width)*1000;
+        }
+        clampFocus();
+        if(raf) return;
+        raf = requestAnimationFrame(function(){ raf=null; refreshView(); });
+      }
+      function onUp(ev){
+        thumbEl.releasePointerCapture(e.pointerId);
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+      }
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+    });
+  }
+  dragThumb(document.getElementById('sbThumbV'), document.getElementById('sbTrackV'), 'v');
+  dragThumb(document.getElementById('sbThumbH'), document.getElementById('sbTrackH'), 'h');
+
+  function applySearch(){
+    var q = document.getElementById('search').value.trim().toLowerCase();
+    clusters.forEach(function(c){
+      var match = !q || c.members.some(function(f){
+        return f.name.toLowerCase().indexOf(q)>-1 || f.city.toLowerCase().indexOf(q)>-1 || f.country.toLowerCase().indexOf(q)>-1;
+      });
+      c._el.classList.toggle('dim', !match);
+    });
+  }
+  document.getElementById('search').addEventListener('input', applySearch);
+})();
+</script>
