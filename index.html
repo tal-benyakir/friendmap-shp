@@ -1,4 +1,7 @@
+<!DOCTYPE html>
 <title>Friend Atlas</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
 <style>
@@ -273,6 +276,10 @@
     background:var(--ocean);
     overflow:hidden;
     line-height:0;
+    /* allow normal page scrolling to pass through, but opt out of the
+       browser's own pinch-zoom here so a pinch on the map can drive our
+       own zoom instead of zooming the whole page */
+    touch-action:pan-x pan-y;
   }
   #mapCanvas{ display:block; width:100%; height:auto; image-rendering:pixelated; image-rendering:crisp-edges; }
   #mapOverlay{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; touch-action:manipulation; }
@@ -458,10 +465,39 @@
   .legend{ text-align:center; font-size:17px; color:var(--titlebar-dark); }
   .legend b{ color:var(--heart); }
 
+  .toolbar-row{ display:contents; }
+
   @media (max-width:560px){
-    .titlebar .name{ font-size:9px; }
-    .popup-name{ font-size:11px; }
-    .search-wrap{ order:10; flex-basis:100%; }
+    .window .titlebar .name{ font-size:10px; }
+
+    /* toolbar: group into two rows so controls stay tidy, sized as normal
+       touch targets now that the viewport reports its real width instead
+       of being scaled down from a phantom 980px layout. */
+    .toolbar{ flex-direction:column; align-items:stretch; gap:8px; }
+    .toolbar-row:first-child{ display:flex; align-items:stretch; gap:8px; }
+    .toolbar-row:first-child .names-toggle{ flex:1; }
+    .toolbar-row:last-child{ display:flex; flex-direction:column; gap:8px; }
+    .tool-btn{ width:44px; height:44px; flex:none; }
+    .tool-btn svg{ width:22px; height:22px; }
+    .names-toggle{ font-size:16px; gap:6px; justify-content:center; min-width:0; border:2px solid; border-color:var(--white) var(--black) var(--black) var(--white); background:var(--chrome); }
+    .names-toggle .box{ width:22px; height:22px; flex:none; }
+    .names-toggle .box svg{ width:15px; height:15px; }
+    .zoom-group{ display:flex; }
+    .zoom-btn{ flex:1; }
+    .search-wrap{ min-width:0; }
+
+    /* scrollbars: noticeably wider than the hairline desktop ones, easy to grab with a finger */
+    .map-shell{ grid-template-columns:1fr 28px; grid-template-rows:1fr 28px; }
+    .scrollbar-v .sb-arrow{ height:24px; }
+    .scrollbar-h .sb-arrow{ width:24px; }
+
+    /* popup: a bit more breathing room, with a title bar sized to match */
+    .popup{ max-width:94vw; }
+    .popup .titlebar{ padding:10px 10px; gap:10px; }
+    .popup .titlebar .icon{ width:26px; height:26px; }
+    .popup .titlebar .name{ font-size:12px; }
+    .popup .win-btn{ width:26px; height:26px; font-size:12px; }
+    .popup-body{ padding:20px; }
   }
 </style>
 
@@ -504,23 +540,27 @@
       </nav>
 
       <div class="toolbar dither">
-        <label class="names-toggle">
-          <input type="checkbox" id="chkLabels">
-          <span class="box"><svg viewBox="0 0 12 12"><polyline points="1,6 4,10 11,2" fill="none" stroke="currentColor" stroke-width="2"/></svg></span>
-          show all names
-        </label>
-        <button class="tool-btn" id="btnNight" title="toggle night mode" aria-pressed="false"></button>
-        <button class="tool-btn" id="btnTour" title="toggle friend tour line" aria-pressed="false"></button>
-        <button class="tool-btn" id="btnSurprise" title="surprise me"></button>
-        <div class="zoom-group" role="group" aria-label="zoom level">
-          <button class="zoom-btn" id="btnZoomOut" title="zoom out">−</button>
-          <button class="zoom-btn" id="btnWorld">world</button>
-          <button class="zoom-btn" id="btnEurope">europe</button>
-          <button class="zoom-btn" id="btnZoomIn" title="zoom in">+</button>
+        <div class="toolbar-row">
+          <label class="names-toggle">
+            <input type="checkbox" id="chkLabels">
+            <span class="box"><svg viewBox="0 0 12 12"><polyline points="1,6 4,10 11,2" fill="none" stroke="currentColor" stroke-width="2"/></svg></span>
+            show all names
+          </label>
+          <button class="tool-btn" id="btnNight" title="toggle night mode" aria-pressed="false"></button>
+          <button class="tool-btn" id="btnTour" title="toggle friend tour line" aria-pressed="false"></button>
+          <button class="tool-btn" id="btnSurprise" title="surprise me"></button>
         </div>
-        <div class="search-wrap">
-          <svg viewBox="0 0 16 16" id="searchIcon"></svg>
-          <input id="search" type="search" placeholder="search the atlas..." aria-label="find a friend or a city">
+        <div class="toolbar-row">
+          <div class="zoom-group" role="group" aria-label="zoom level">
+            <button class="zoom-btn" id="btnZoomOut" title="zoom out">−</button>
+            <button class="zoom-btn" id="btnWorld">world</button>
+            <button class="zoom-btn" id="btnEurope">europe</button>
+            <button class="zoom-btn" id="btnZoomIn" title="zoom in">+</button>
+          </div>
+          <div class="search-wrap">
+            <svg viewBox="0 0 16 16" id="searchIcon"></svg>
+            <input id="search" type="search" placeholder="search the atlas..." aria-label="find a friend or a city">
+          </div>
         </div>
       </div>
 
@@ -1223,6 +1263,35 @@
     if(wheelRaf) return;
     wheelRaf = requestAnimationFrame(function(){ wheelRaf=null; refreshView(); });
   }, { passive:false });
+
+  // ---------- pinch-to-zoom the map on touch, anchored at the pinch midpoint ----------
+  var pinchDist = null;
+  function touchDist(t0, t1){ var dx=t1.clientX-t0.clientX, dy=t1.clientY-t0.clientY; return Math.sqrt(dx*dx+dy*dy); }
+  mapViewportEl.addEventListener('touchstart', function(e){
+    if(e.touches.length===2){ pinchDist = touchDist(e.touches[0], e.touches[1]); }
+  }, { passive:true });
+  mapViewportEl.addEventListener('touchmove', function(e){
+    if(e.touches.length!==2 || pinchDist===null) return;
+    e.preventDefault(); // only while actively pinching — a one-finger touch still scrolls the page normally
+    var rect = mapViewportEl.getBoundingClientRect();
+    var t0 = e.touches[0], t1 = e.touches[1];
+    var midX = (t0.clientX+t1.clientX)/2, midY = (t0.clientY+t1.clientY)/2;
+    var px = (midX-rect.left)/rect.width, py = (midY-rect.top)/rect.height;
+    var cursorWx = view.lonMin + px*(view.lonMax-view.lonMin);
+    var cursorWy = view.latMin + py*(view.latMax-view.latMin);
+    var newDist = touchDist(t0, t1);
+    var factor = pinchDist / Math.max(1, newDist);
+    var newSpan = Math.min(MAX_SPAN, Math.max(MIN_SPAN, curSpan*factor));
+    focus.wx = cursorWx + (focus.wx-cursorWx) * (newSpan/curSpan);
+    focus.wy = cursorWy + (focus.wy-cursorWy) * (newSpan/curSpan);
+    curSpan = newSpan;
+    clampFocus();
+    pinchDist = newDist;
+    if(wheelRaf) return;
+    wheelRaf = requestAnimationFrame(function(){ wheelRaf=null; refreshView(); });
+  }, { passive:false });
+  mapViewportEl.addEventListener('touchend', function(e){ if(e.touches.length<2) pinchDist = null; }, { passive:true });
+  mapViewportEl.addEventListener('touchcancel', function(){ pinchDist = null; }, { passive:true });
 
   // ---------- functional scrollbars: pan whenever zoomed in past the world view ----------
   function stepFor(){ return isPannable() ? curSpan*0.25 : 0; }
